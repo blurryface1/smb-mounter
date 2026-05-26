@@ -35,7 +35,12 @@ export function loadConfig(): AppConfig {
 
 export function saveConfig(config: AppConfig): void {
   ensureConfigDir()
-  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
+  try {
+    writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
+  } catch (error) {
+    console.error('Failed to save config:', error)
+    throw new Error('Failed to save configuration file')
+  }
 }
 
 export function getMounts(): StoredMountConfig[] {
@@ -49,17 +54,16 @@ export function getMountById(id: string): StoredMountConfig | undefined {
 export function addMount(mount: Omit<StoredMountConfig, 'id' | 'createdAt' | 'updatedAt'> & { password?: string }): StoredMountConfig {
   const config = loadRawConfig()
 
+  const { password, ...mountWithoutPassword } = mount
+
   const now = Date.now()
   const newMount: StoredMountConfig = {
-    ...mount,
-    id: `mount-${now}-${Math.random().toString(36).substr(2, 9)}`,
+    ...mountWithoutPassword,
+    id: `mount-${now}-${Math.random().toString(36).substring(2, 11)}`,
     createdAt: now,
     updatedAt: now,
-    encryptedPassword: mount.password ? encrypt(mount.password) : undefined
+    encryptedPassword: password ? encrypt(password) : undefined
   }
-
-  // Remove password from stored version
-  delete (newMount as any).password
 
   config.mounts.push(newMount)
   saveConfig(config)
@@ -74,18 +78,18 @@ export function updateMount(id: string, updates: Partial<StoredMountConfig> & { 
   if (index === -1) return null
 
   const existing = config.mounts[index]
+  const { password, ...updatesWithoutPassword } = updates
+
   const updated: StoredMountConfig = {
     ...existing,
-    ...updates,
+    ...updatesWithoutPassword,
     id: existing.id,
     createdAt: existing.createdAt,
     updatedAt: Date.now(),
-    encryptedPassword: updates.password
-      ? encrypt(updates.password)
+    encryptedPassword: password
+      ? encrypt(password)
       : updates.encryptedPassword ?? existing.encryptedPassword
   }
-
-  delete (updated as any).password
 
   config.mounts[index] = updated
   saveConfig(config)
