@@ -1,9 +1,10 @@
 import React from 'react'
+import SettingsWindow from './components/SettingsWindow'
 
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <h1 className="text-2xl font-bold">SMB Mounter</h1>
+    <div className="min-h-screen bg-gray-50">
+      <SettingsWindow />
     </div>
   )
 }
