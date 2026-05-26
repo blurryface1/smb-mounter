@@ -1,0 +1,15 @@
+appId: com.smbmounter.app
+productName: SMB Mounter
+directories:
+  buildResources: build
+files:
+  - '!**/.git/*'
+  - '!**/node_modules/*'
+  - '!src/*'
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+    - target: zip
+  hardenedRuntime: true
+  gatekeeperAssess: false
