@@ -4,11 +4,23 @@ import { join } from 'path'
 
 let tray: Tray | null = null
 
+function getAssetPath(filename: string): string {
+  if (app.isPackaged) {
+    return join(process.resourcesPath, 'assets', filename)
+  }
+  return join(__dirname, '../../assets', filename)
+}
+
 export function setupTray(mainWindow: BrowserWindow): void {
-  const iconPath = join(__dirname, '../../assets/trayConnected.png')
+  const iconPath = getAssetPath('trayConnected.png')
   const icon = nativeImage.createFromPath(iconPath)
 
-  tray = new Tray(icon.resize({ width: 16, height: 16 }))
+  // Fallback to empty icon if file not found
+  if (icon.isEmpty()) {
+    tray = new Tray(nativeImage.createEmpty())
+  } else {
+    tray = new Tray(icon.resize({ width: 16, height: 16 }))
+  }
 
   updateTrayMenu(mainWindow)
 
@@ -57,7 +69,10 @@ export function updateTrayIcon(status: 'connected' | 'disconnected' | 'error'): 
     error: 'trayError.png'
   }
 
-  const iconPath = join(__dirname, '../../assets', iconMap[status])
+  const iconPath = getAssetPath(iconMap[status])
   const icon = nativeImage.createFromPath(iconPath)
-  tray.setImage(icon.resize({ width: 16, height: 16 }))
+
+  if (!icon.isEmpty()) {
+    tray.setImage(icon.resize({ width: 16, height: 16 }))
+  }
 }

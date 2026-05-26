@@ -2,7 +2,8 @@
   "name": "smb-mounter",
   "version": "1.0.0",
   "description": "macOS SMB mount manager",
-  "main": "dist/main/index.js",
+  "author": "SMB Mounter Team",
+  "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -34,6 +35,12 @@
     "directories": {
       "output": "release"
     },
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
     "mac": {
       "category": "public.app-category.utilities",
       "hardenedRuntime": true,
