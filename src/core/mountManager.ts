@@ -12,6 +12,10 @@ class MountManager {
     this.mainWindow = window
   }
 
+  clearMainWindow(): void {
+    this.mainWindow = null
+  }
+
   getStatus(configId: string): MountStatus | undefined {
     return this.statuses.get(configId)
   }
@@ -39,7 +43,7 @@ class MountManager {
 
   async refreshAllStatuses(): Promise<void> {
     const mounts = getMounts()
-    await Promise.all(mounts.map(m => this.refreshStatus(m)))
+    await Promise.allSettled(mounts.map(m => this.refreshStatus(m)))
   }
 
   async mount(configId: string): Promise<{ success: boolean; error?: string }> {
