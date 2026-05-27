@@ -1,6 +1,9 @@
 // src/renderer/i18n/index.ts
 import { useState, useCallback, useEffect } from 'react'
-import { zh, en, Locale, LocaleStrings } from './locales'
+import { zh, en } from './locales'
+
+export type Locale = 'zh' | 'en'
+export type LocaleStrings = typeof zh
 
 const locales: Record<Locale, LocaleStrings> = { zh, en }
 
@@ -40,4 +43,4 @@ export function useI18n() {
   }
 }
 
-export { zh, en, Locale, LocaleStrings }
+export { zh, en }

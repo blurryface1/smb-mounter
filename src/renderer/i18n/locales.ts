@@ -148,5 +148,4 @@ export const en = {
   }
 }
 
-export type Locale = 'zh' | 'en'
-export type LocaleStrings = typeof zh
+// Type definitions are in index.ts
