@@ -4,10 +4,12 @@ import { useConfig } from '../hooks/useConfig'
 import { MountConfig } from '../hooks/useMounts'
 import MountList from './MountList'
 import MountForm from './MountForm'
+import { useI18n, Locale } from '../i18n'
 
 type View = 'mounts' | 'settings'
 
 export default function SettingsWindow() {
+  const { t, locale, changeLanguage } = useI18n()
   const { mounts, statuses, loading, addMount, updateMount, deleteMount, mount, unmount, retry, refresh } = useMounts()
   const { settings, updateSettings } = useConfig()
 
@@ -42,22 +44,26 @@ export default function SettingsWindow() {
   const handleMount = async (id: string) => {
     const result = await mount(id)
     if (!result.success && result.error) {
-      console.error('Mount failed:', result.error)
+      console.error(t.errors.mountFailed, result.error)
     }
   }
 
   const handleUnmount = async (id: string) => {
     const result = await unmount(id)
     if (!result.success && result.error) {
-      console.error('Unmount failed:', result.error)
+      console.error(t.errors.unmountFailed, result.error)
     }
   }
 
   const handleRetry = async (id: string) => {
     const result = await retry(id)
     if (!result.success && result.error) {
-      console.error('Retry failed:', result.error)
+      console.error(t.errors.retryFailed, result.error)
     }
+  }
+
+  const handleLanguageChange = (newLocale: Locale) => {
+    changeLanguage(newLocale)
   }
 
   return (
@@ -70,7 +76,7 @@ export default function SettingsWindow() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
             </svg>
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">SMB Mounter</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{t.appName}</h1>
         </div>
 
         <nav className="flex gap-1 bg-gray-100 rounded-lg p-1">
@@ -80,7 +86,7 @@ export default function SettingsWindow() {
               view === 'mounts' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Mounts
+            {t.add}
           </button>
           <button
             onClick={() => setView('settings')}
@@ -88,7 +94,7 @@ export default function SettingsWindow() {
               view === 'settings' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Settings
+            {t.settings}
           </button>
         </nav>
       </header>
@@ -99,7 +105,7 @@ export default function SettingsWindow() {
           <div className="max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">
-                Configured Mounts
+                {t.add}
               </h2>
               <button
                 onClick={handleAddNew}
@@ -108,7 +114,7 @@ export default function SettingsWindow() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add Mount
+                {t.add}
               </button>
             </div>
 
@@ -126,14 +132,13 @@ export default function SettingsWindow() {
         ) : (
           <div className="max-w-3xl mx-auto">
             <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-4">
-              Application Settings
+              {t.settingsPage.title}
             </h2>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y divide-gray-200">
               <div className="p-4 flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium text-gray-900">Launch at Login</h3>
-                  <p className="text-sm text-gray-500">Start SMB Mounter when you log in</p>
+                  <h3 className="font-medium text-gray-900">{t.settingsPage.launchAtLogin}</h3>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -148,8 +153,7 @@ export default function SettingsWindow() {
 
               <div className="p-4 flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium text-gray-900">Show Notifications</h3>
-                  <p className="text-sm text-gray-500">Display notifications for mount events</p>
+                  <h3 className="font-medium text-gray-900">{t.settingsPage.showNotifications}</h3>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -165,8 +169,7 @@ export default function SettingsWindow() {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h3 className="font-medium text-gray-900">Default Mount Path</h3>
-                    <p className="text-sm text-gray-500">Default directory for new mounts</p>
+                    <h3 className="font-medium text-gray-900">{t.settingsPage.defaultMountPath}</h3>
                   </div>
                 </div>
                 <input
@@ -180,8 +183,7 @@ export default function SettingsWindow() {
               <div className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h3 className="font-medium text-gray-900">Connection Check Interval</h3>
-                    <p className="text-sm text-gray-500">How often to check mount status (seconds)</p>
+                    <h3 className="font-medium text-gray-900">{t.settingsPage.checkInterval}</h3>
                   </div>
                 </div>
                 <input
@@ -193,6 +195,30 @@ export default function SettingsWindow() {
                   className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+
+              <div className="p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900">{t.settingsPage.language}</h3>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleLanguageChange('zh')}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      locale === 'zh' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t.settingsPage.languageZh}
+                  </button>
+                  <button
+                    onClick={() => handleLanguageChange('en')}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      locale === 'en' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t.settingsPage.languageEn}
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-center">
@@ -203,7 +229,7 @@ export default function SettingsWindow() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Refresh All Mounts
+                {t.refresh}
               </button>
             </div>
           </div>

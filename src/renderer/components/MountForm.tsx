@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { MountConfig } from '../hooks/useMounts'
 import { useConfig } from '../hooks/useConfig'
+import { useI18n } from '../i18n'
 
 interface MountFormProps {
   mount?: MountConfig | null
@@ -33,6 +34,7 @@ const emptyForm: FormData = {
 }
 
 export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
+  const { t } = useI18n()
   const [formData, setFormData] = useState<FormData>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,24 +74,24 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
     setError(null)
 
     if (!formData.name.trim()) {
-      setError('Name is required')
+      setError(t.form.name + ' is required')
       return
     }
     if (!formData.server.trim()) {
-      setError('Server address is required')
+      setError(t.form.server + ' is required')
       return
     }
     if (!formData.shareName.trim()) {
-      setError('Share name is required')
+      setError(t.form.shareName + ' is required')
       return
     }
     if (!formData.mountPath.trim()) {
-      setError('Mount path is required')
+      setError(t.form.mountPath + ' is required')
       return
     }
 
     if (!mount && !formData.password) {
-      setError('Password is required for new mounts')
+      setError(t.form.password + ' is required')
       return
     }
 
@@ -108,7 +110,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            {mount ? 'Edit Mount' : 'Add New Mount'}
+            {mount ? t.form.editTitle : t.form.addTitle}
           </h2>
         </div>
 
@@ -121,7 +123,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Display Name
+              {t.form.name}
             </label>
             <input
               type="text"
@@ -129,14 +131,14 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
               value={formData.name}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="My Share"
+              placeholder={t.form.name}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Server Address
+                {t.form.server}
               </label>
               <input
                 type="text"
@@ -144,12 +146,12 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
                 value={formData.server}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="smb://192.168.1.1"
+                placeholder={t.form.serverPlaceholder}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Share Name
+                {t.form.shareName}
               </label>
               <input
                 type="text"
@@ -157,7 +159,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
                 value={formData.shareName}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="shared"
+                placeholder={t.form.shareNamePlaceholder}
               />
             </div>
           </div>
@@ -165,7 +167,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Username
+                {t.form.username}
               </label>
               <input
                 type="text"
@@ -173,12 +175,12 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
                 value={formData.username}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="user"
+                placeholder={t.form.username}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
+                {t.form.password}
               </label>
               <input
                 type="password"
@@ -186,14 +188,14 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder={mount ? '(unchanged)' : 'password'}
+                placeholder={mount ? t.form.passwordPlaceholderEdit : t.form.password}
               />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Mount Path
+              {t.form.mountPath}
             </label>
             <input
               type="text"
@@ -201,7 +203,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
               value={formData.mountPath}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="/Volumes/SMB/ShareName"
+              placeholder={t.form.mountPathPlaceholder}
             />
           </div>
 
@@ -214,7 +216,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
                 onChange={handleChange}
                 className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">Mount on launch</span>
+              <span className="text-sm text-gray-700">{t.form.autoMount}</span>
             </label>
 
             <label className="flex items-center gap-2">
@@ -225,14 +227,14 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
                 onChange={handleChange}
                 className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
               />
-              <span className="text-sm text-gray-700">Auto retry on failure</span>
+              <span className="text-sm text-gray-700">{t.form.autoRetry}</span>
             </label>
           </div>
 
           {formData.autoRetry && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Retry Interval (seconds)
+                {t.form.retryInterval}
               </label>
               <input
                 type="number"
@@ -252,14 +254,14 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
               onClick={onCancel}
               className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? '...' : t.save}
             </button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { MountConfig, MountStatus } from '../hooks/useMounts'
+import { useI18n } from '../i18n'
 
 interface MountItemProps {
   mount: MountConfig
@@ -18,13 +19,6 @@ const statusColors = {
   pending: 'bg-yellow-500 animate-pulse'
 }
 
-const statusLabels = {
-  mounted: 'Connected',
-  disconnected: 'Disconnected',
-  error: 'Error',
-  pending: 'Connecting...'
-}
-
 export default function MountItem({
   mount,
   status,
@@ -34,6 +28,7 @@ export default function MountItem({
   onEdit,
   onDelete
 }: MountItemProps) {
+  const { t } = useI18n()
   const [isOperating, setIsOperating] = useState(false)
   const currentStatus = status?.status || 'disconnected'
 
@@ -65,7 +60,7 @@ export default function MountItem({
   }
 
   const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete "${mount.name}"?`)) {
+    if (window.confirm(t.confirmDelete)) {
       onDelete(mount.id)
     }
   }
@@ -90,7 +85,7 @@ export default function MountItem({
             currentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
             'bg-gray-100 text-gray-800'
           }`}>
-            {statusLabels[currentStatus]}
+            {t.status[currentStatus]}
           </span>
 
           <div className="flex items-center gap-1">
@@ -100,7 +95,7 @@ export default function MountItem({
                 disabled={isOperating}
                 className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50"
               >
-                {isOperating ? '...' : 'Unmount'}
+                {isOperating ? '...' : t.actions.unmount}
               </button>
             ) : currentStatus === 'error' ? (
               <button
@@ -108,7 +103,7 @@ export default function MountItem({
                 disabled={isOperating}
                 className="px-3 py-1.5 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors disabled:opacity-50"
               >
-                {isOperating ? '...' : 'Retry'}
+                {isOperating ? '...' : t.actions.retry}
               </button>
             ) : (
               <button
@@ -116,14 +111,14 @@ export default function MountItem({
                 disabled={isOperating || currentStatus === 'pending'}
                 className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors disabled:opacity-50"
               >
-                {isOperating ? '...' : 'Mount'}
+                {isOperating ? '...' : t.actions.mount}
               </button>
             )}
 
             <button
               onClick={() => onEdit(mount)}
               className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-              title="Edit"
+              title={t.edit}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -133,7 +128,7 @@ export default function MountItem({
             <button
               onClick={handleDelete}
               className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title="Delete"
+              title={t.delete}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -152,8 +147,8 @@ export default function MountItem({
       <div className="mt-2 flex gap-4 text-xs text-gray-500">
         <span>Path: {mount.mountPath}</span>
         <span>User: {mount.username}</span>
-        {mount.autoMount && <span className="text-blue-600">Auto-mount</span>}
-        {mount.autoRetry && <span className="text-orange-600">Auto-retry</span>}
+        {mount.autoMount && <span className="text-blue-600">{t.form.autoMount}</span>}
+        {mount.autoRetry && <span className="text-orange-600">{t.form.autoRetry}</span>}
       </div>
     </div>
   )

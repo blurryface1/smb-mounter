@@ -1,6 +1,7 @@
 import React from 'react'
 import { MountConfig, MountStatus } from '../hooks/useMounts'
 import MountItem from './MountItem'
+import { useI18n } from '../i18n'
 
 interface MountListProps {
   mounts: MountConfig[]
@@ -23,6 +24,8 @@ export default function MountList({
   onEdit,
   onDelete
 }: MountListProps) {
+  const { t } = useI18n()
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -47,10 +50,8 @@ export default function MountList({
             d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No mounts configured</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Get started by adding a new SMB share.
-        </p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">{t.list.emptyTitle}</h3>
+        <p className="mt-1 text-sm text-gray-500">{t.list.emptyHint}</p>
       </div>
     )
   }
