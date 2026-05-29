@@ -1,4 +1,3 @@
-import React from 'react'
 import { MountConfig, MountStatus } from '../hooks/useMounts'
 import MountItem from './MountItem'
 import { useI18n } from '../i18n'
@@ -11,7 +10,8 @@ interface MountListProps {
   onUnmount: (id: string) => Promise<void>
   onRetry: (id: string) => Promise<void>
   onEdit: (mount: MountConfig) => void
-  onDelete: (id: string) => void
+  onOpenInFinder: (mount: MountConfig) => Promise<void>
+  onDelete: (mount: MountConfig) => Promise<void>
 }
 
 export default function MountList({
@@ -22,6 +22,7 @@ export default function MountList({
   onUnmount,
   onRetry,
   onEdit,
+  onOpenInFinder,
   onDelete
 }: MountListProps) {
   const { t } = useI18n()
@@ -57,7 +58,7 @@ export default function MountList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {mounts.map(mount => (
         <MountItem
           key={mount.id}
@@ -67,6 +68,7 @@ export default function MountList({
           onUnmount={onUnmount}
           onRetry={onRetry}
           onEdit={onEdit}
+          onOpenInFinder={onOpenInFinder}
           onDelete={onDelete}
         />
       ))}

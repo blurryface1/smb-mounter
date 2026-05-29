@@ -8,6 +8,21 @@ import { mountManager } from '../core/mountManager'
 import { connectionMonitor } from '../core/connectionMonitor'
 
 let mainWindow: BrowserWindow | null = null
+let isQuitting = false
+
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    mainWindow = createMainWindow()
+    mountManager.setMainWindow(mainWindow)
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+  }
+
+  mainWindow.show()
+  mainWindow.focus()
+}
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -23,9 +38,14 @@ function createMainWindow(): BrowserWindow {
     }
   })
 
-  win.loadFile(join(__dirname, '../renderer/index.html'))
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'))
+  }
 
   win.on('close', (e) => {
+    if (isQuitting) return
     e.preventDefault()
     win.hide()
   })
@@ -33,25 +53,40 @@ function createMainWindow(): BrowserWindow {
   return win
 }
 
-app.whenReady().then(() => {
-  mainWindow = createMainWindow()
-  mountManager.setMainWindow(mainWindow)
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
-  setupTray(mainWindow)
-  setupIPC(mainWindow)
-  setupAutoLauncher()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    showMainWindow()
+  })
 
-  connectionMonitor.start()
+  app.whenReady().then(() => {
+    mainWindow = createMainWindow()
+    mountManager.setMainWindow(mainWindow)
 
-  // Initial status refresh
-  mountManager.refreshAllStatuses()
-})
+    setupTray(mainWindow)
+    setupIPC(mainWindow)
+    setupAutoLauncher()
+
+    connectionMonitor.start()
+
+    // Initial status refresh
+    mountManager.refreshAllStatuses()
+  })
+
+  app.on('activate', () => {
+    showMainWindow()
+  })
+}
 
 app.on('window-all-closed', () => {
   // Don't quit on window close - keep running in tray
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
   connectionMonitor.stop()
   mountManager.clearMainWindow()
 })

@@ -3,6 +3,7 @@ import { Tray, Menu, BrowserWindow, nativeImage, app } from 'electron'
 import { join } from 'path'
 
 let tray: Tray | null = null
+const TRAY_ICON_SIZE = 18
 
 function getAssetPath(filename: string): string {
   if (app.isPackaged) {
@@ -19,7 +20,7 @@ export function setupTray(mainWindow: BrowserWindow): void {
   if (icon.isEmpty()) {
     tray = new Tray(nativeImage.createEmpty())
   } else {
-    tray = new Tray(icon.resize({ width: 16, height: 16 }))
+    tray = new Tray(icon.resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE }))
   }
 
   updateTrayMenu(mainWindow)
@@ -73,6 +74,6 @@ export function updateTrayIcon(status: 'connected' | 'disconnected' | 'error'): 
   const icon = nativeImage.createFromPath(iconPath)
 
   if (!icon.isEmpty()) {
-    tray.setImage(icon.resize({ width: 16, height: 16 }))
+    tray.setImage(icon.resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE }))
   }
 }

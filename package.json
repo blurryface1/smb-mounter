@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "typecheck": "tsc -b",
+    "test": "tsc src/core/mountIdentity.ts src/core/systemMountMatcher.ts src/core/smb.ts src/renderer/ui/mountPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test test/mountIdentity.test.mjs test/iconAssets.test.mjs test/systemMountMatcher.test.mjs test/smb.test.mjs test/mountPresentation.test.mjs",
     "preview": "electron-vite preview",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
@@ -16,9 +18,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "electron": "^28.1.0",
-    "electron-builder": "^24.9.1",
-    "electron-vite": "^2.0.0",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "@types/react": "^18.2.0",
@@ -43,9 +45,13 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
+      "icon": "build/icon.icns",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     }
   }
 }

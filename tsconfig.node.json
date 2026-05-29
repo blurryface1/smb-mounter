@@ -5,7 +5,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
+    "noEmit": true,
     "strict": true
   },
-  "include": ["src/main", "vite.config.ts"]
+  "include": ["src/main", "src/preload", "src/core", "src/types", "vite.config.ts", "electron.vite.config.ts"]
 }

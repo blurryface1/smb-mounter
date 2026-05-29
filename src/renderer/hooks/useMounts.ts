@@ -1,23 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 
-declare global {
-  interface Window {
-    api: {
-      getMounts: () => Promise<any[]>
-      addMount: (mount: any) => Promise<any>
-      updateMount: (id: string, updates: any) => Promise<any>
-      deleteMount: (id: string) => Promise<boolean>
-      mount: (id: string) => Promise<{ success: boolean; error?: string }>
-      unmount: (id: string) => Promise<{ success: boolean; error?: string }>
-      retryMount: (id: string) => Promise<{ success: boolean; error?: string }>
-      getAllStatuses: () => Promise<any[]>
-      refreshAllStatuses: () => Promise<any[]>
-      onMountStatusChanged: (callback: (data: any) => void) => void
-      onRefreshAllMounts: (callback: () => void) => void
-    }
-  }
-}
-
 export interface MountConfig {
   id: string
   name: string
@@ -62,7 +44,7 @@ export function useMounts() {
   useEffect(() => {
     loadMounts()
 
-    window.api.onMountStatusChanged((data) => {
+    const unsubscribeStatusChanged = window.api.onMountStatusChanged((data) => {
       setStatuses(prev => {
         const next = new Map(prev)
         next.set(data.configId, data.status)
@@ -70,9 +52,14 @@ export function useMounts() {
       })
     })
 
-    window.api.onRefreshAllMounts(() => {
+    const unsubscribeRefreshAll = window.api.onRefreshAllMounts(() => {
       loadMounts()
     })
+
+    return () => {
+      unsubscribeStatusChanged()
+      unsubscribeRefreshAll()
+    }
   }, [loadMounts])
 
   const addMount = async (mount: Omit<MountConfig, 'id'> & { password: string }) => {

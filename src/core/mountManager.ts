@@ -2,7 +2,15 @@
 import { BrowserWindow, Notification } from 'electron'
 import { StoredMountConfig, MountStatus } from '../types'
 import { getMountById, getMounts, getDecryptedPassword, getSettings } from './configStore'
-import { mountSMB, unmountSMB, isMountActive, checkServerReachable, flushDNS } from './smb'
+import {
+  mountSMB,
+  unmountSMB,
+  isMountActive,
+  checkServerReachable,
+  flushDNS,
+  isSystemAutomountPath,
+  triggerSystemAutomount
+} from './smb'
 
 class MountManager {
   private statuses: Map<string, MountStatus> = new Map()
@@ -25,7 +33,7 @@ class MountManager {
   }
 
   async refreshStatus(mount: StoredMountConfig): Promise<MountStatus> {
-    const active = await isMountActive(mount.mountPath)
+    const active = await isMountActive(mount.mountPath, mount)
     const existing = this.statuses.get(mount.id)
 
     const status: MountStatus = {
@@ -52,18 +60,56 @@ class MountManager {
       return { success: false, error: 'Mount config not found' }
     }
 
+    const existingStatus = this.statuses.get(configId)
+    const retryCount = existingStatus?.retryCount ?? 0
+
     // Update status to pending
     this.statuses.set(configId, {
       configId,
       status: 'pending',
       lastChecked: Date.now(),
-      retryCount: 0
+      retryCount
     })
     this.notifyStatusChange(configId, this.statuses.get(configId)!)
 
     // Check if already mounted
-    if (await isMountActive(mount.mountPath)) {
+    if (await isMountActive(mount.mountPath, mount)) {
+      const status: MountStatus = {
+        configId,
+        status: 'mounted',
+        lastChecked: Date.now(),
+        retryCount: 0
+      }
+      this.statuses.set(configId, status)
+      this.notifyStatusChange(configId, status)
       return { success: true }
+    }
+
+    if (isSystemAutomountPath(mount.mountPath)) {
+      await triggerSystemAutomount(mount.mountPath)
+
+      if (await isMountActive(mount.mountPath, mount)) {
+        const status: MountStatus = {
+          configId,
+          status: 'mounted',
+          lastChecked: Date.now(),
+          retryCount: 0
+        }
+        this.statuses.set(configId, status)
+        this.notifyStatusChange(configId, status)
+        return { success: true }
+      }
+
+      const status: MountStatus = {
+        configId,
+        status: 'error',
+        lastChecked: Date.now(),
+        retryCount,
+        errorMessage: 'System-managed SMB automount path is not active. Open it in Finder or choose an app-managed mount path outside /System/Volumes/Data/mnt/SMB.'
+      }
+      this.statuses.set(configId, status)
+      this.notifyStatusChange(configId, status)
+      return { success: false, error: status.errorMessage }
     }
 
     // Check server reachable
@@ -76,7 +122,7 @@ class MountManager {
           configId,
           status: 'error',
           lastChecked: Date.now(),
-          retryCount: 0,
+          retryCount,
           errorMessage: `Cannot reach server ${mount.server}`
         }
         this.statuses.set(configId, status)
@@ -92,7 +138,7 @@ class MountManager {
         configId,
         status: 'error',
         lastChecked: Date.now(),
-        retryCount: 0,
+        retryCount,
         errorMessage: 'Password not available'
       }
       this.statuses.set(configId, status)
@@ -113,7 +159,7 @@ class MountManager {
       configId,
       status: result.success ? 'mounted' : 'error',
       lastChecked: Date.now(),
-      retryCount: 0,
+      retryCount: result.success ? 0 : retryCount,
       errorMessage: result.error
     }
     this.statuses.set(configId, status)

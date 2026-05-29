@@ -19,13 +19,21 @@ const api = {
   getAllStatuses: () => ipcRenderer.invoke('get-all-statuses'),
   refreshStatus: (configId: string) => ipcRenderer.invoke('refresh-status', configId),
   refreshAllStatuses: () => ipcRenderer.invoke('refresh-all-statuses'),
+  detectSystemMounts: () => ipcRenderer.invoke('detect-system-mounts'),
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  resolveSystemMountForPath: (selectedPath: string) => ipcRenderer.invoke('resolve-system-mount-for-path', selectedPath),
+  openPathInFinder: (mountPath: string) => ipcRenderer.invoke('open-path-in-finder', mountPath),
 
   // Events
   onMountStatusChanged: (callback: (data: any) => void) => {
-    ipcRenderer.on('mount-status-changed', (_, data) => callback(data))
+    const listener = (_: Electron.IpcRendererEvent, data: any) => callback(data)
+    ipcRenderer.on('mount-status-changed', listener)
+    return () => ipcRenderer.removeListener('mount-status-changed', listener)
   },
   onRefreshAllMounts: (callback: () => void) => {
-    ipcRenderer.on('refresh-all-mounts', () => callback())
+    const listener = () => callback()
+    ipcRenderer.on('refresh-all-mounts', listener)
+    return () => ipcRenderer.removeListener('refresh-all-mounts', listener)
   }
 }
 

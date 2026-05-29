@@ -4,6 +4,8 @@ import { mountManager } from './mountManager'
 
 class ConnectionMonitor {
   private intervalId: NodeJS.Timeout | null = null
+  private checking = false
+  private lastRetryAt: Map<string, number> = new Map()
 
   start(): void {
     if (this.intervalId) return
@@ -25,17 +27,29 @@ class ConnectionMonitor {
     }
   }
 
+  restart(): void {
+    this.stop()
+    this.start()
+  }
+
   private async checkAllMounts(): Promise<void> {
+    if (this.checking) return
+
+    this.checking = true
     const mounts = getMounts()
 
-    for (const mount of mounts) {
-      const status = await mountManager.refreshStatus(mount)
+    try {
+      for (const mount of mounts) {
+        const status = await mountManager.refreshStatus(mount)
 
-      // Auto-retry disconnected mounts that have autoRetry enabled
-      if (status.status === 'disconnected' && mount.autoRetry) {
-        console.log(`Auto-retrying mount: ${mount.name}`)
-        await mountManager.retryMount(mount.id)
+        if (status.status === 'disconnected' && mount.autoRetry && this.canRetry(mount.id, mount.retryInterval)) {
+          console.log(`Auto-retrying mount: ${mount.name}`)
+          this.lastRetryAt.set(mount.id, Date.now())
+          await mountManager.retryMount(mount.id)
+        }
       }
+    } finally {
+      this.checking = false
     }
   }
 
@@ -50,6 +64,12 @@ class ConnectionMonitor {
         }
       }
     }
+  }
+
+  private canRetry(configId: string, retryInterval: number): boolean {
+    const intervalMs = Math.max(retryInterval, 5) * 1000
+    const lastRetry = this.lastRetryAt.get(configId) ?? 0
+    return Date.now() - lastRetry >= intervalMs
   }
 }
 

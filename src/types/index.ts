@@ -41,6 +41,6 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   launchAtLogin: false,
   showNotifications: true,
-  defaultMountPath: '/Volumes/SMB',
+  defaultMountPath: '/Users/Shared/SMB',
   checkInterval: 30
 }

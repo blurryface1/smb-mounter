@@ -1,5 +1,6 @@
 // src/core/crypto.ts
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
+import { safeStorage } from 'electron'
 import { hostname } from 'os'
 
 const ALGORITHM = 'aes-256-gcm'
@@ -7,35 +8,50 @@ const IV_LENGTH = 16
 const SALT_LENGTH = 32
 const AUTH_TAG_LENGTH = 16
 const MIN_BUFFER_LENGTH = SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH
+const SAFE_STORAGE_PREFIX = 'safe-storage:'
 
 /**
- * SECURITY WARNING: Master Key Derivation
+ * Legacy fallback warning
  *
- * The current implementation derives the master key from the machine's hostname.
- * This approach has significant security limitations:
- *
- * 1. Hostnames are often predictable and may be exposed in network logs or DNS records
- * 2. An attacker with access to the machine can easily obtain the hostname
- * 3. This provides NO protection against attackers who gain read access to the system
- *
- * RECOMMENDATION FOR PRODUCTION USE:
- * - Store the master key in macOS Keychain using Keychain Access API
- * - Use a hardware security module (HSM) for enterprise deployments
- * - Consider using a properly seeded cryptographic random key stored securely
- * - Rotate keys periodically and implement key rotation mechanisms
- *
- * This implementation is suitable only for obfuscation purposes, NOT for
- * protecting sensitive data. Do NOT use this for passwords, API keys,
- * or any data that requires genuine cryptographic protection.
+ * New credentials use Electron safeStorage, backed by the operating system's
+ * credential storage where available. The hostname-derived AES-GCM path remains
+ * only so existing configs can still be decrypted and as a last-resort fallback.
  */
 function getMasterKey(): Buffer {
-  // WARNING: hostname-based key derivation is NOT secure for production
-  // See the security warning above for proper key management
   const machineId = hostname()
   return scryptSync(machineId, 'smb-mounter-salt', 32)
 }
 
 export function encrypt(plaintext: string): string {
+  if (isSafeStorageAvailable()) {
+    return SAFE_STORAGE_PREFIX + safeStorage.encryptString(plaintext).toString('base64')
+  }
+
+  return encryptLegacy(plaintext)
+}
+
+export function decrypt(encryptedData: string): string {
+  if (encryptedData.startsWith(SAFE_STORAGE_PREFIX)) {
+    if (!isSafeStorageAvailable()) {
+      throw new Error('OS credential storage is not available')
+    }
+
+    const encrypted = Buffer.from(encryptedData.slice(SAFE_STORAGE_PREFIX.length), 'base64')
+    return safeStorage.decryptString(encrypted)
+  }
+
+  return decryptLegacy(encryptedData)
+}
+
+function isSafeStorageAvailable(): boolean {
+  try {
+    return safeStorage.isEncryptionAvailable()
+  } catch {
+    return false
+  }
+}
+
+function encryptLegacy(plaintext: string): string {
   const masterKey = getMasterKey()
   const iv = randomBytes(IV_LENGTH)
   const salt = randomBytes(SALT_LENGTH)
@@ -55,7 +71,7 @@ export function encrypt(plaintext: string): string {
   return result.toString('base64')
 }
 
-export function decrypt(encryptedData: string): string {
+function decryptLegacy(encryptedData: string): string {
   const masterKey = getMasterKey()
   const buffer = Buffer.from(encryptedData, 'base64')
 

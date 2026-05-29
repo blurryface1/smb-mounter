@@ -4,29 +4,41 @@ export const zh = {
   // 通用
   appName: 'SMB Mounter',
   loading: '加载中...',
-  refresh: '刷新状态',
+  refresh: '刷新',
   settings: '设置',
+  mounts: '共享',
   cancel: '取消',
   save: '保存',
   delete: '删除',
   edit: '编辑',
-  add: '添加挂载',
-  confirmDelete: '确定要删除这个挂载配置吗？',
+  add: '添加共享',
+  confirmDelete: '确定要删除这个共享配置吗？远端文件不会被删除。',
+  confirmUnmountOnDelete: '此共享当前已挂载。是否同时卸载这个共享？',
   back: '返回',
+
+  // 摘要
+  summary: {
+    mounted: '{count} 已挂载',
+    errors: '{count} 错误',
+    autoRetry: '{count} 自动重试',
+    empty: '暂无共享'
+  },
 
   // 状态
   status: {
     mounted: '已挂载',
     disconnected: '未连接',
     error: '错误',
-    pending: '连接中...'
+    pending: '挂载中...'
   },
 
   // 操作
   actions: {
     mount: '挂载',
     unmount: '卸载',
-    retry: '重试'
+    retry: '重试',
+    openInFinder: '打开 Finder',
+    more: '更多操作'
   },
 
   // 挂载表单
@@ -40,18 +52,26 @@ export const zh = {
     password: '密码',
     passwordPlaceholderEdit: '留空保持原密码',
     mountPath: '挂载路径',
-    mountPathPlaceholder: '/Volumes/SMB',
+    mountPathPlaceholder: '/Users/Shared/SMB',
     autoMount: '开机自动挂载',
     autoRetry: '断开自动重试',
     retryInterval: '重试间隔 (秒)',
-    addTitle: '添加挂载',
-    editTitle: '编辑挂载'
+    addTitle: '添加共享',
+    editTitle: '编辑共享',
+    choose: '选择…',
+    locationSection: '共享位置',
+    credentialsSection: '凭据',
+    automationSection: '自动化',
+    chooseMountedShare: '选择已挂载共享',
+    chooseMountPath: '选择路径',
+    chooseMountedShareHint: '从系统中已挂载的 SMB 共享自动填充服务器、共享名称和路径。',
+    chooseMountPathHint: '选择这个共享在本机使用的挂载路径。'
   },
 
   // 列表
   list: {
-    emptyTitle: '暂无挂载配置',
-    emptyHint: '点击下方按钮添加'
+    emptyTitle: '暂无共享',
+    emptyHint: '添加一个 SMB 共享后，就可以在这里挂载并打开。'
   },
 
   // 设置
@@ -66,11 +86,27 @@ export const zh = {
     languageEn: 'English'
   },
 
+  // 导入
+  import: {
+    title: '导入系统挂载',
+    description: '检测系统中已挂载的 SMB 共享',
+    detected: '检测到 {count} 个挂载',
+    noMounts: '未检测到系统 SMB 挂载',
+    importSelected: '导入选中',
+    selectAll: '全选',
+    deselectAll: '取消全选',
+    name: '名称',
+    server: '服务器',
+    share: '共享',
+    path: '路径'
+  },
+
   // 错误
   errors: {
     mountFailed: '挂载失败',
     unmountFailed: '卸载失败',
-    retryFailed: '重试失败'
+    retryFailed: '重试失败',
+    openInFinderFailed: '无法在访达中打开'
   }
 }
 
@@ -78,15 +114,25 @@ export const en = {
   // Common
   appName: 'SMB Mounter',
   loading: 'Loading...',
-  refresh: 'Refresh Status',
+  refresh: 'Refresh',
   settings: 'Settings',
+  mounts: 'Shares',
   cancel: 'Cancel',
   save: 'Save',
   delete: 'Delete',
   edit: 'Edit',
-  add: 'Add Mount',
-  confirmDelete: 'Are you sure you want to delete this mount configuration?',
+  add: 'Add Share',
+  confirmDelete: 'Delete this share configuration? Remote files will not be deleted.',
+  confirmUnmountOnDelete: 'This share is currently mounted. Unmount it as well?',
   back: 'Back',
+
+  // Summary
+  summary: {
+    mounted: '{count} mounted',
+    errors: '{count} error(s)',
+    autoRetry: '{count} auto-retry',
+    empty: 'No shares'
+  },
 
   // Status
   status: {
@@ -100,7 +146,9 @@ export const en = {
   actions: {
     mount: 'Mount',
     unmount: 'Unmount',
-    retry: 'Retry'
+    retry: 'Retry',
+    openInFinder: 'Open Finder',
+    more: 'More actions'
   },
 
   // Mount Form
@@ -114,18 +162,26 @@ export const en = {
     password: 'Password',
     passwordPlaceholderEdit: 'Leave empty to keep original',
     mountPath: 'Mount Path',
-    mountPathPlaceholder: '/Volumes/SMB',
+    mountPathPlaceholder: '/Users/Shared/SMB',
     autoMount: 'Auto-mount on startup',
     autoRetry: 'Auto-retry on disconnect',
     retryInterval: 'Retry Interval (seconds)',
-    addTitle: 'Add Mount',
-    editTitle: 'Edit Mount'
+    addTitle: 'Add Share',
+    editTitle: 'Edit Share',
+    choose: 'Choose...',
+    locationSection: 'Share Location',
+    credentialsSection: 'Credentials',
+    automationSection: 'Automation',
+    chooseMountedShare: 'Choose Mounted Share',
+    chooseMountPath: 'Choose Path',
+    chooseMountedShareHint: 'Fill server, share name, and path from an SMB share already mounted by the system.',
+    chooseMountPathHint: 'Choose the local path this share should use when mounted.'
   },
 
   // List
   list: {
-    emptyTitle: 'No mount configurations',
-    emptyHint: 'Click the button below to add'
+    emptyTitle: 'No shares',
+    emptyHint: 'Add an SMB share to mount and open it from here.'
   },
 
   // Settings
@@ -140,11 +196,27 @@ export const en = {
     languageEn: 'English'
   },
 
+  // Import
+  import: {
+    title: 'Import System Mounts',
+    description: 'Detect SMB shares already mounted on the system',
+    detected: 'Detected {count} mount(s)',
+    noMounts: 'No system SMB mounts detected',
+    importSelected: 'Import Selected',
+    selectAll: 'Select All',
+    deselectAll: 'Deselect All',
+    name: 'Name',
+    server: 'Server',
+    share: 'Share',
+    path: 'Path'
+  },
+
   // Errors
   errors: {
     mountFailed: 'Mount failed',
     unmountFailed: 'Unmount failed',
-    retryFailed: 'Retry failed'
+    retryFailed: 'Retry failed',
+    openInFinderFailed: 'Failed to open in Finder'
   }
 }
 

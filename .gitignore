@@ -1,5 +1,13 @@
 node_modules/
 dist/
+out/
+release/
+out-test/
+.superpowers/
 .DS_Store
 *.log
 .env
+*.tsbuildinfo
+CLAUDE.md
+AGENTS.md
+docs
