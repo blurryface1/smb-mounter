@@ -24,6 +24,7 @@ interface SystemAutomountTriggerOptions {
   isActive?: () => Promise<boolean>
   wait?: (ms: number) => Promise<void>
   attempts?: number
+  openInFinder?: boolean
 }
 
 function runCommand(command: string, args: string[]): Promise<void> {
@@ -83,6 +84,10 @@ export async function triggerSystemAutomount(
     return true
   } catch {
     // Finder is the most reliable trigger for macOS autofs SMB paths.
+  }
+
+  if (!options.openInFinder) {
+    return false
   }
 
   try {

@@ -32,7 +32,26 @@ test('parses percent-encoded SMB share names from mount output', () => {
   })
 })
 
-test('falls back to opening Finder when ls does not activate a system SMB automount path', async () => {
+test('does not open Finder by default when ls does not activate a system SMB automount path', async () => {
+  const calls = []
+
+  const result = await triggerSystemAutomount('/System/Volumes/Data/mnt/SMB/UNRAID', {
+    run: async (command, args) => {
+      calls.push([command, args])
+      throw new Error('ls did not activate autofs')
+    },
+    isActive: async () => false,
+    wait: async () => undefined,
+    attempts: 1
+  })
+
+  assert.equal(result, false)
+  assert.deepEqual(calls, [
+    ['/bin/ls', ['/System/Volumes/Data/mnt/SMB/UNRAID']]
+  ])
+})
+
+test('can open Finder when explicitly allowed for a system SMB automount path', async () => {
   const calls = []
   let active = false
 
@@ -48,7 +67,8 @@ test('falls back to opening Finder when ls does not activate a system SMB automo
     },
     isActive: async () => active,
     wait: async () => undefined,
-    attempts: 1
+    attempts: 1,
+    openInFinder: true
   })
 
   assert.equal(result, true)
