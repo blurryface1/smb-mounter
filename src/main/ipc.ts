@@ -98,6 +98,15 @@ export function setupIPC(mainWindow: BrowserWindow): void {
       }
     }
 
+    if (
+      typeof sanitizedUpdates.theme !== 'undefined' &&
+      sanitizedUpdates.theme !== 'system' &&
+      sanitizedUpdates.theme !== 'light' &&
+      sanitizedUpdates.theme !== 'dark'
+    ) {
+      delete sanitizedUpdates.theme
+    }
+
     for (const booleanKey of ['showNotifications', 'diagnosticMode']) {
       if (typeof sanitizedUpdates[booleanKey] !== 'undefined' && typeof sanitizedUpdates[booleanKey] !== 'boolean') {
         delete sanitizedUpdates[booleanKey]

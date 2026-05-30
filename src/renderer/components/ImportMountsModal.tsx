@@ -50,45 +50,45 @@ export default function ImportMountsModal({ onImport, onClose }: ImportMountsMod
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">{t.import.title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 dark:bg-black/70">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col dark:bg-gray-900">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between dark:border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-50">{t.import.title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="p-4 border-b border-gray-200">
-          <p className="text-sm text-gray-600">{t.import.description}</p>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+          <p className="text-sm text-gray-600 dark:text-gray-300">{t.import.description}</p>
         </div>
 
         <div className="flex-1 overflow-auto p-4">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">{t.loading}</div>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">{t.loading}</div>
           ) : mounts.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">{t.import.noMounts}</div>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">{t.import.noMounts}</div>
           ) : (
             <>
-              <div className="text-sm text-gray-600 mb-3">
+              <div className="text-sm text-gray-600 mb-3 dark:text-gray-300">
                 {t.import.detected.replace('{count}', String(mounts.length))}
               </div>
 
               <div className="flex gap-2 mb-3">
-                <button onClick={selectAll} className="text-sm text-blue-600 hover:text-blue-700">
+                <button onClick={selectAll} className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
                   {t.import.selectAll}
                 </button>
-                <span className="text-gray-300">|</span>
-                <button onClick={deselectAll} className="text-sm text-blue-600 hover:text-blue-700">
+                <span className="text-gray-300 dark:text-gray-700">|</span>
+                <button onClick={deselectAll} className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
                   {t.import.deselectAll}
                 </button>
               </div>
 
-              <table className="w-full text-sm">
+              <table className="w-full text-sm dark:text-gray-200">
                 <thead>
-                  <tr className="border-b border-gray-200">
+                  <tr className="border-b border-gray-200 dark:border-gray-800">
                     <th className="py-2 text-left w-10"></th>
                     <th className="py-2 text-left">{t.import.server}</th>
                     <th className="py-2 text-left">{t.import.share}</th>
@@ -97,7 +97,7 @@ export default function ImportMountsModal({ onImport, onClose }: ImportMountsMod
                 </thead>
                 <tbody>
                   {mounts.map((mount, i) => (
-                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer" onClick={() => toggleSelect(i)}>
+                    <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer dark:border-gray-800 dark:hover:bg-gray-800" onClick={() => toggleSelect(i)}>
                       <td className="py-2">
                         <input
                           type="checkbox"
@@ -117,17 +117,17 @@ export default function ImportMountsModal({ onImport, onClose }: ImportMountsMod
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 dark:border-gray-800">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+            className="px-4 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             {t.cancel}
           </button>
           <button
             onClick={handleImport}
             disabled={selected.size === 0}
-            className="px-4 py-2 text-sm text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md"
+            className="px-4 py-2 text-sm text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md dark:disabled:bg-gray-700"
           >
             {t.import.importSelected} ({selected.size})
           </button>

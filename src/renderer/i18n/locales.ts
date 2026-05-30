@@ -84,6 +84,12 @@ export const zh = {
     language: '语言',
     languageZh: '中文',
     languageEn: 'English',
+    theme: '外观',
+    themeOptions: {
+      system: '跟随系统',
+      light: '浅色',
+      dark: '深色'
+    },
     diagnosticMode: '诊断模式',
     diagnosticModeHint: '开启后记录本地诊断日志，包含服务器、共享、用户名和挂载路径等非密码字段。',
     openDiagnosticLog: '打开日志文件'
@@ -198,6 +204,12 @@ export const en = {
     language: 'Language',
     languageZh: '中文',
     languageEn: 'English',
+    theme: 'Appearance',
+    themeOptions: {
+      system: 'System',
+      light: 'Light',
+      dark: 'Dark'
+    },
     diagnosticMode: 'Diagnostic Mode',
     diagnosticModeHint: 'Writes local diagnostic logs with non-password fields such as server, share, username, and mount path.',
     openDiagnosticLog: 'Open Log File'

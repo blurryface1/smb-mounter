@@ -6,6 +6,7 @@ export interface AppSettings {
   defaultMountPath: string
   checkInterval: number
   diagnosticMode: boolean
+  theme: 'system' | 'light' | 'dark'
 }
 
 export function useConfig() {

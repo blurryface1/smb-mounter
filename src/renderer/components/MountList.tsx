@@ -39,7 +39,7 @@ export default function MountList({
     return (
       <div className="text-center py-12">
         <svg
-          className="mx-auto h-12 w-12 text-gray-400"
+          className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -51,8 +51,8 @@ export default function MountList({
             d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">{t.list.emptyTitle}</h3>
-        <p className="mt-1 text-sm text-gray-500">{t.list.emptyHint}</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t.list.emptyTitle}</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t.list.emptyHint}</p>
       </div>
     )
   }

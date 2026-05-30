@@ -40,12 +40,12 @@ export default function MountItem({
     autoRetry: t.form.autoRetry
   })
   const statusTone = currentStatus === 'mounted'
-    ? 'bg-green-100 text-green-700'
+    ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
     : currentStatus === 'error'
-      ? 'bg-red-100 text-red-700'
+      ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
       : currentStatus === 'pending'
-        ? 'bg-yellow-100 text-yellow-800'
-        : 'bg-gray-100 text-gray-700'
+        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300'
+        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
 
   const handleMount = async () => {
     setIsOperating(true)
@@ -107,7 +107,7 @@ export default function MountItem({
           type="button"
           onClick={handleRetry}
           disabled={isOperating}
-          className="px-3 py-1.5 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors disabled:opacity-50"
+          className="px-3 py-1.5 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors disabled:opacity-50 dark:bg-orange-950 dark:text-orange-300 dark:hover:bg-orange-900"
         >
           {isOperating ? '...' : t.actions.retry}
         </button>
@@ -127,18 +127,18 @@ export default function MountItem({
   }
 
   return (
-    <div className="bg-white rounded-md border border-gray-200 px-3 py-2.5 hover:border-gray-300 transition-colors">
+    <div className="bg-white rounded-md border border-gray-200 px-3 py-2.5 hover:border-gray-300 transition-colors dark:bg-gray-900 dark:border-gray-800 dark:hover:border-gray-700">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0">
             <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusColors[currentStatus]}`} />
-            <h3 className="font-medium text-sm text-gray-900 truncate">{mount.name}</h3>
+            <h3 className="font-medium text-sm text-gray-900 truncate dark:text-gray-50">{mount.name}</h3>
             <span className={`text-xs px-1.5 py-0.5 rounded ${statusTone}`}>
               {t.status[currentStatus]}
             </span>
           </div>
 
-          <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-1">
+          <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-x-2 gap-y-1 dark:text-gray-400">
             {detailParts.map(part => (
               <span key={part} className="min-w-0 truncate max-w-full">
                 {part}
@@ -147,7 +147,7 @@ export default function MountItem({
           </div>
 
           {status?.errorMessage && (
-            <div className="mt-1 text-xs text-red-600 truncate">
+            <div className="mt-1 text-xs text-red-600 truncate dark:text-red-300">
               {status.errorMessage}
             </div>
           )}
@@ -161,7 +161,7 @@ export default function MountItem({
               type="button"
               onClick={handleUnmount}
               disabled={isOperating}
-              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50"
+              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
               title={t.actions.unmount}
               aria-label={t.actions.unmount}
             >
@@ -174,7 +174,7 @@ export default function MountItem({
           <button
             type="button"
             onClick={() => onEdit(mount)}
-            className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
             title={t.edit}
             aria-label={t.edit}
           >
@@ -186,7 +186,7 @@ export default function MountItem({
           <button
             type="button"
             onClick={handleDelete}
-            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors dark:text-gray-400 dark:hover:text-red-300 dark:hover:bg-red-950"
             title={t.delete}
             aria-label={t.delete}
           >

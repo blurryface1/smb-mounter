@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMounts } from '../hooks/useMounts'
 import { useConfig } from '../hooks/useConfig'
 import { MountConfig } from '../hooks/useMounts'
@@ -22,6 +22,26 @@ export default function SettingsWindow() {
   const [editingMount, setEditingMount] = useState<MountConfig | null>(null)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+
+  useEffect(() => {
+    const theme = settings?.theme ?? 'system'
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+    const applyTheme = () => {
+      const shouldUseDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches)
+      document.documentElement.classList.toggle('dark', shouldUseDark)
+      document.documentElement.style.colorScheme = shouldUseDark ? 'dark' : 'light'
+    }
+
+    applyTheme()
+
+    if (theme !== 'system') {
+      return undefined
+    }
+
+    mediaQuery.addEventListener('change', applyTheme)
+    return () => mediaQuery.removeEventListener('change', applyTheme)
+  }, [settings?.theme])
 
   const summary = getMountSummary(mounts, Array.from(statuses.values()))
   const summaryItems = summary.total === 0
@@ -127,20 +147,20 @@ export default function SettingsWindow() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <header className="app-drag-region bg-white border-b border-gray-200 pl-20 pr-4 py-3 min-h-[58px] flex items-center justify-between">
+    <div className="h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+      <header className="app-drag-region bg-white border-b border-gray-200 pl-20 pr-4 py-3 min-h-[58px] flex items-center justify-between dark:bg-gray-900 dark:border-gray-800">
         <div className="flex items-center gap-3 min-w-0">
           <img src={windowIcon} alt="" className="w-7 h-7 shrink-0" draggable={false} />
           <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 truncate">{t.appName}</h1>
-            <p className="text-xs text-gray-500 truncate">{summaryItems.join(' · ')}</p>
+            <h1 className="text-base font-semibold text-gray-900 truncate dark:text-gray-50">{t.appName}</h1>
+            <p className="text-xs text-gray-500 truncate dark:text-gray-400">{summaryItems.join(' · ')}</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={() => setShowSettings(true)}
-          className="app-no-drag p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          className="app-no-drag p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
           title={t.settings}
           aria-label={t.settings}
         >
@@ -154,14 +174,14 @@ export default function SettingsWindow() {
       <main className="flex-1 overflow-auto p-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">
+            <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide dark:text-gray-300">
               {t.mounts}
             </h2>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={refresh}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-md transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -171,7 +191,7 @@ export default function SettingsWindow() {
               <button
                 type="button"
                 onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-md transition-colors dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />

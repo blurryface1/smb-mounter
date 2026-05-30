@@ -37,6 +37,7 @@ export interface AppSettings {
   defaultMountPath: string
   checkInterval: number
   diagnosticMode: boolean
+  theme: 'system' | 'light' | 'dark'
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -44,5 +45,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showNotifications: true,
   defaultMountPath: '/Users/Shared/SMB',
   checkInterval: 30,
-  diagnosticMode: false
+  diagnosticMode: false,
+  theme: 'system'
 }
