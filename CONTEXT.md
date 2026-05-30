@@ -11,3 +11,7 @@ _Avoid_: Mount configuration, network disk
 **Mount**:
 The action that makes a saved share available at its configured local path. In Chinese UI, use "挂载" and "卸载" for the primary state-changing actions.
 _Avoid_: Connect, disconnect
+
+**Diagnostic Mode**:
+A user-enabled troubleshooting mode that records local diagnostic logs for SMB share operations. In Chinese UI, use "诊断模式".
+_Avoid_: Developer mode, debug mode
