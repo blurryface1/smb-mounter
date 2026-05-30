@@ -42,13 +42,54 @@ test('does not open Finder by default when ls does not activate a system SMB aut
     },
     isActive: async () => false,
     wait: async () => undefined,
-    attempts: 1
+    attempts: 1,
+    log: async () => undefined
   })
 
   assert.equal(result, false)
   assert.deepEqual(calls, [
     ['/bin/ls', ['/System/Volumes/Data/mnt/SMB/UNRAID']]
   ])
+})
+
+test('waits for a system SMB automount path to become active after ls triggers it', async () => {
+  let activeChecks = 0
+  const waits = []
+
+  const result = await triggerSystemAutomount('/System/Volumes/Data/mnt/SMB/UNRAID', {
+    run: async () => undefined,
+    isActive: async () => {
+      activeChecks += 1
+      return activeChecks === 2
+    },
+    wait: async (ms) => {
+      waits.push(ms)
+    },
+    attempts: 3,
+    log: async () => undefined
+  })
+
+  assert.equal(result, true)
+  assert.equal(activeChecks, 2)
+  assert.deepEqual(waits, [500])
+})
+
+test('does not report a system SMB automount path active when ls succeeds but mount stays inactive', async () => {
+  let activeChecks = 0
+
+  const result = await triggerSystemAutomount('/System/Volumes/Data/mnt/SMB/UNRAID', {
+    run: async () => undefined,
+    isActive: async () => {
+      activeChecks += 1
+      return false
+    },
+    wait: async () => undefined,
+    attempts: 2,
+    log: async () => undefined
+  })
+
+  assert.equal(result, false)
+  assert.equal(activeChecks, 2)
 })
 
 test('can open Finder when explicitly allowed for a system SMB automount path', async () => {
@@ -68,7 +109,8 @@ test('can open Finder when explicitly allowed for a system SMB automount path', 
     isActive: async () => active,
     wait: async () => undefined,
     attempts: 1,
-    openInFinder: true
+    openInFinder: true,
+    log: async () => undefined
   })
 
   assert.equal(result, true)

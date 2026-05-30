@@ -1,6 +1,7 @@
 // src/core/connectionMonitor.ts
 import { getMounts, getSettings } from './configStore'
 import { mountManager } from './mountManager'
+import { diagnosticLog } from './diagnosticLogger'
 
 class ConnectionMonitor {
   private intervalId: NodeJS.Timeout | null = null
@@ -44,6 +45,15 @@ class ConnectionMonitor {
 
         if (status.status === 'disconnected' && mount.autoRetry && this.canRetry(mount.id, mount.retryInterval)) {
           console.log(`Auto-retrying mount: ${mount.name}`)
+          await diagnosticLog('info', 'mount.retry.start', {
+            mountId: mount.id,
+            mountName: mount.name,
+            server: mount.server,
+            shareName: mount.shareName,
+            username: mount.username,
+            mountPath: mount.mountPath,
+            reason: 'autoRetry'
+          })
           this.lastRetryAt.set(mount.id, Date.now())
           await mountManager.retryMount(mount.id)
         }
@@ -60,6 +70,15 @@ class ConnectionMonitor {
       if (mount.autoMount) {
         const status = await mountManager.refreshStatus(mount)
         if (status.status === 'disconnected') {
+          await diagnosticLog('info', 'mount.start', {
+            mountId: mount.id,
+            mountName: mount.name,
+            server: mount.server,
+            shareName: mount.shareName,
+            username: mount.username,
+            mountPath: mount.mountPath,
+            reason: 'autoMount'
+          })
           await mountManager.mount(mount.id)
         }
       }

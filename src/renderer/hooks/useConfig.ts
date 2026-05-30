@@ -5,6 +5,7 @@ export interface AppSettings {
   showNotifications: boolean
   defaultMountPath: string
   checkInterval: number
+  diagnosticMode: boolean
 }
 
 export function useConfig() {

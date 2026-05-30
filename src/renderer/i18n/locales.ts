@@ -83,7 +83,10 @@ export const zh = {
     checkInterval: '状态检查间隔 (秒)',
     language: '语言',
     languageZh: '中文',
-    languageEn: 'English'
+    languageEn: 'English',
+    diagnosticMode: '诊断模式',
+    diagnosticModeHint: '开启后记录本地诊断日志，包含服务器、共享、用户名和挂载路径等非密码字段。',
+    openDiagnosticLog: '打开日志文件'
   },
 
   // 导入
@@ -106,7 +109,8 @@ export const zh = {
     mountFailed: '挂载失败',
     unmountFailed: '卸载失败',
     retryFailed: '重试失败',
-    openInFinderFailed: '无法在访达中打开'
+    openInFinderFailed: '无法在访达中打开',
+    openDiagnosticLogFailed: '无法打开诊断日志'
   }
 }
 
@@ -193,7 +197,10 @@ export const en = {
     checkInterval: 'Status check interval (seconds)',
     language: 'Language',
     languageZh: '中文',
-    languageEn: 'English'
+    languageEn: 'English',
+    diagnosticMode: 'Diagnostic Mode',
+    diagnosticModeHint: 'Writes local diagnostic logs with non-password fields such as server, share, username, and mount path.',
+    openDiagnosticLog: 'Open Log File'
   },
 
   // Import
@@ -216,7 +223,8 @@ export const en = {
     mountFailed: 'Mount failed',
     unmountFailed: 'Unmount failed',
     retryFailed: 'Retry failed',
-    openInFinderFailed: 'Failed to open in Finder'
+    openInFinderFailed: 'Failed to open in Finder',
+    openDiagnosticLogFailed: 'Failed to open diagnostic log'
   }
 }
 

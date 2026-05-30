@@ -3,6 +3,7 @@ import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 import { existsSync, mkdirSync } from 'fs'
 import { MountIdentity, isSameMountIdentity } from './mountIdentity'
+import { diagnosticLog, DiagnosticLogLevel } from './diagnosticLogger'
 
 const execFileAsync = promisify(execFile)
 const SYSTEM_SMB_AUTOMOUNT_ROOT = '/System/Volumes/Data/mnt/SMB'
@@ -18,6 +19,7 @@ export interface MountedSMBShare extends MountIdentity {
 }
 
 type CommandRunner = (command: string, args: string[]) => Promise<void>
+type DiagnosticLogRunner = (level: DiagnosticLogLevel, event: string, metadata?: Record<string, unknown>) => Promise<void>
 
 interface SystemAutomountTriggerOptions {
   run?: CommandRunner
@@ -25,6 +27,7 @@ interface SystemAutomountTriggerOptions {
   wait?: (ms: number) => Promise<void>
   attempts?: number
   openInFinder?: boolean
+  log?: DiagnosticLogRunner
 }
 
 function runCommand(command: string, args: string[]): Promise<void> {
@@ -53,6 +56,26 @@ function wait(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+async function waitForActiveMount(
+  isActive: () => Promise<boolean>,
+  waitForRetry: (ms: number) => Promise<void>,
+  attempts: number,
+  log: DiagnosticLogRunner,
+  metadata: Record<string, unknown>
+): Promise<boolean> {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (await isActive()) {
+      await log('info', 'systemAutomount.wait.active', { ...metadata, attempt: attempt + 1 })
+      return true
+    }
+
+    await waitForRetry(500)
+  }
+
+  await log('warn', 'systemAutomount.wait.timeout', { ...metadata, attempts })
+  return false
+}
+
 export function safeDecodeURIComponent(value: string): string {
   try {
     return decodeURIComponent(value)
@@ -78,11 +101,20 @@ export async function triggerSystemAutomount(
   const isActive = options.isActive ?? (() => isExactMountPathActive(mountPath))
   const waitForRetry = options.wait ?? wait
   const attempts = options.attempts ?? 10
+  const log = options.log ?? diagnosticLog
+  const metadata = { mountPath }
 
   try {
+    await log('info', 'systemAutomount.trigger.ls', metadata)
     await run('/bin/ls', [mountPath])
-    return true
-  } catch {
+    if (await waitForActiveMount(isActive, waitForRetry, attempts, log, metadata)) {
+      return true
+    }
+  } catch (error: any) {
+    await log('warn', 'systemAutomount.trigger.ls', {
+      ...metadata,
+      error: error?.message ?? String(error)
+    })
     // Finder is the most reliable trigger for macOS autofs SMB paths.
   }
 
@@ -91,20 +123,17 @@ export async function triggerSystemAutomount(
   }
 
   try {
+    await log('info', 'systemAutomount.trigger.openFinder', metadata)
     await run('/usr/bin/open', [mountPath])
-  } catch {
+  } catch (error: any) {
+    await log('warn', 'systemAutomount.trigger.openFinder', {
+      ...metadata,
+      error: error?.message ?? String(error)
+    })
     return false
   }
 
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    if (await isActive()) {
-      return true
-    }
-
-    await waitForRetry(500)
-  }
-
-  return false
+  return waitForActiveMount(isActive, waitForRetry, attempts, log, metadata)
 }
 
 export function parseSMBMountLine(line: string): (MountedSMBShare & { path: string }) | null {

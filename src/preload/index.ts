@@ -23,6 +23,7 @@ const api = {
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
   resolveSystemMountForPath: (selectedPath: string) => ipcRenderer.invoke('resolve-system-mount-for-path', selectedPath),
   openPathInFinder: (mountPath: string) => ipcRenderer.invoke('open-path-in-finder', mountPath),
+  openDiagnosticLogFile: () => ipcRenderer.invoke('open-diagnostic-log-file'),
 
   // Events
   onMountStatusChanged: (callback: (data: any) => void) => {

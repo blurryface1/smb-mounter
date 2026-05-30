@@ -36,11 +36,13 @@ export interface AppSettings {
   showNotifications: boolean
   defaultMountPath: string
   checkInterval: number
+  diagnosticMode: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   launchAtLogin: false,
   showNotifications: true,
   defaultMountPath: '/Users/Shared/SMB',
-  checkInterval: 30
+  checkInterval: 30,
+  diagnosticMode: false
 }

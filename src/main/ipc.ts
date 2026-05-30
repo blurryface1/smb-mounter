@@ -15,6 +15,7 @@ import {
 import { detectSystemSMBMounts, DetectedMount } from '../core/detectMounts'
 import { findMountForSelectedPath } from '../core/systemMountMatcher'
 import { setLaunchAtLogin } from './autoLauncher'
+import { diagnosticLog, openDiagnosticLogFile } from '../core/diagnosticLogger'
 
 function normalizeCheckInterval(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -97,12 +98,21 @@ export function setupIPC(mainWindow: BrowserWindow): void {
       }
     }
 
-    if (typeof sanitizedUpdates.showNotifications !== 'undefined' && typeof sanitizedUpdates.showNotifications !== 'boolean') {
-      delete sanitizedUpdates.showNotifications
+    for (const booleanKey of ['showNotifications', 'diagnosticMode']) {
+      if (typeof sanitizedUpdates[booleanKey] !== 'undefined' && typeof sanitizedUpdates[booleanKey] !== 'boolean') {
+        delete sanitizedUpdates[booleanKey]
+      }
+    }
+
+    if (typeof sanitizedUpdates.diagnosticMode === 'boolean' && !sanitizedUpdates.diagnosticMode) {
+      await diagnosticLog('info', 'diagnosticMode.disabled')
     }
 
     if (Object.keys(sanitizedUpdates).length > 0) {
       updateSettings(sanitizedUpdates)
+      if (sanitizedUpdates.diagnosticMode === true) {
+        await diagnosticLog('info', 'diagnosticMode.enabled')
+      }
     }
 
     if (typeof launchAtLogin === 'boolean') {
@@ -171,5 +181,14 @@ export function setupIPC(mainWindow: BrowserWindow): void {
 
     const error = await shell.openPath(normalizedPath)
     return error ? { success: false, error } : { success: true }
+  })
+
+  ipcMain.handle('open-diagnostic-log-file', async () => {
+    const result = await openDiagnosticLogFile()
+    await diagnosticLog(result.success ? 'info' : 'error', 'diagnosticLog.open', {
+      success: result.success,
+      error: result.error
+    })
+    return result
   })
 }

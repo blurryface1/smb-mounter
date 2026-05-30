@@ -8,7 +8,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -b",
-    "test": "tsc src/core/mountIdentity.ts src/core/systemMountMatcher.ts src/core/smb.ts src/renderer/ui/mountPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test test/mountIdentity.test.mjs test/iconAssets.test.mjs test/systemMountMatcher.test.mjs test/smb.test.mjs test/mountPresentation.test.mjs",
+    "test": "tsc src/core/mountIdentity.ts src/core/systemMountMatcher.ts src/core/smb.ts src/core/diagnosticLogger.ts src/renderer/ui/mountPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test test/mountIdentity.test.mjs test/iconAssets.test.mjs test/systemMountMatcher.test.mjs test/smb.test.mjs test/diagnosticLogger.test.mjs test/mountPresentation.test.mjs",
     "preview": "electron-vite preview",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"

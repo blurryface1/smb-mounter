@@ -39,6 +39,7 @@ declare global {
       selectDirectory: () => Promise<string | null>
       resolveSystemMountForPath: (selectedPath: string) => Promise<SystemMount | null>
       openPathInFinder: (mountPath: string) => Promise<MountOperationResult>
+      openDiagnosticLogFile: () => Promise<MountOperationResult>
       onMountStatusChanged: (callback: (data: MountStatusChangedEvent) => void) => () => void
       onRefreshAllMounts: (callback: () => void) => () => void
     }

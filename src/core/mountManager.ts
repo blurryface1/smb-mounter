@@ -11,6 +11,20 @@ import {
   isSystemAutomountPath,
   triggerSystemAutomount
 } from './smb'
+import { diagnosticLog } from './diagnosticLogger'
+
+function getMountLogMetadata(mount: StoredMountConfig): Record<string, unknown> {
+  return {
+    mountId: mount.id,
+    mountName: mount.name,
+    server: mount.server,
+    shareName: mount.shareName,
+    username: mount.username,
+    mountPath: mount.mountPath,
+    autoMount: mount.autoMount,
+    autoRetry: mount.autoRetry
+  }
+}
 
 class MountManager {
   private statuses: Map<string, MountStatus> = new Map()
@@ -45,6 +59,11 @@ class MountManager {
 
     this.statuses.set(mount.id, status)
     this.notifyStatusChange(mount.id, status)
+    await diagnosticLog('info', 'status.refresh', {
+      ...getMountLogMetadata(mount),
+      status: status.status,
+      retryCount: status.retryCount
+    })
 
     return status
   }
@@ -62,6 +81,10 @@ class MountManager {
 
     const existingStatus = this.statuses.get(configId)
     const retryCount = existingStatus?.retryCount ?? 0
+    await diagnosticLog('info', 'mount.start', {
+      ...getMountLogMetadata(mount),
+      retryCount
+    })
 
     // Update status to pending
     this.statuses.set(configId, {
@@ -82,11 +105,20 @@ class MountManager {
       }
       this.statuses.set(configId, status)
       this.notifyStatusChange(configId, status)
+      await diagnosticLog('info', 'mount.alreadyActive', {
+        ...getMountLogMetadata(mount),
+        status: status.status
+      })
       return { success: true }
     }
 
     if (isSystemAutomountPath(mount.mountPath)) {
-      await triggerSystemAutomount(mount.mountPath)
+      await diagnosticLog('info', 'mount.systemAutomount.start', getMountLogMetadata(mount))
+      const triggered = await triggerSystemAutomount(mount.mountPath)
+      await diagnosticLog('info', 'mount.systemAutomount.result', {
+        ...getMountLogMetadata(mount),
+        triggered
+      })
 
       if (await isMountActive(mount.mountPath, mount)) {
         const status: MountStatus = {
@@ -97,6 +129,10 @@ class MountManager {
         }
         this.statuses.set(configId, status)
         this.notifyStatusChange(configId, status)
+        await diagnosticLog('info', 'mount.success', {
+          ...getMountLogMetadata(mount),
+          status: status.status
+        })
         return { success: true }
       }
 
@@ -109,6 +145,10 @@ class MountManager {
       }
       this.statuses.set(configId, status)
       this.notifyStatusChange(configId, status)
+      await diagnosticLog('error', 'mount.error', {
+        ...getMountLogMetadata(mount),
+        error: status.errorMessage
+      })
       return { success: false, error: status.errorMessage }
     }
 
@@ -127,6 +167,10 @@ class MountManager {
         }
         this.statuses.set(configId, status)
         this.notifyStatusChange(configId, status)
+        await diagnosticLog('error', 'mount.error', {
+          ...getMountLogMetadata(mount),
+          error: status.errorMessage
+        })
         return { success: false, error: status.errorMessage }
       }
     }
@@ -143,6 +187,10 @@ class MountManager {
       }
       this.statuses.set(configId, status)
       this.notifyStatusChange(configId, status)
+      await diagnosticLog('error', 'mount.error', {
+        ...getMountLogMetadata(mount),
+        error: status.errorMessage
+      })
       return { success: false, error: status.errorMessage }
     }
 
@@ -164,6 +212,11 @@ class MountManager {
     }
     this.statuses.set(configId, status)
     this.notifyStatusChange(configId, status)
+    await diagnosticLog(result.success ? 'info' : 'error', result.success ? 'mount.success' : 'mount.error', {
+      ...getMountLogMetadata(mount),
+      error: result.error,
+      status: status.status
+    })
 
     if (result.success) {
       this.showNotification(`${mount.name} mounted successfully`)
@@ -177,6 +230,7 @@ class MountManager {
     if (!mount) {
       return { success: false, error: 'Mount config not found' }
     }
+    await diagnosticLog('info', 'mount.unmount.start', getMountLogMetadata(mount))
 
     const result = await unmountSMB(mount.mountPath)
 
@@ -189,6 +243,11 @@ class MountManager {
     }
     this.statuses.set(configId, status)
     this.notifyStatusChange(configId, status)
+    await diagnosticLog(result.success ? 'info' : 'error', 'mount.unmount.result', {
+      ...getMountLogMetadata(mount),
+      success: result.success,
+      error: result.error
+    })
 
     return result
   }
@@ -200,6 +259,14 @@ class MountManager {
       this.statuses.set(configId, {
         ...existing,
         retryCount: existing.retryCount + 1
+      })
+    }
+
+    const mount = getMountById(configId)
+    if (mount) {
+      await diagnosticLog('info', 'mount.retry.start', {
+        ...getMountLogMetadata(mount),
+        retryCount: (existing?.retryCount ?? 0) + 1
       })
     }
 
