@@ -140,9 +140,15 @@ export function setupIPC(mainWindow: BrowserWindow): void {
   })
 
   // Mount operations
-  ipcMain.handle('mount', (_, configId) => mountManager.mount(configId))
+  ipcMain.handle('mount', (_, configId) => mountManager.mount(configId, {
+    source: 'manual',
+    openSystemAutomountInFinder: true
+  }))
   ipcMain.handle('unmount', (_, configId) => mountManager.unmount(configId))
-  ipcMain.handle('retry-mount', (_, configId) => mountManager.retryMount(configId))
+  ipcMain.handle('retry-mount', (_, configId) => mountManager.retryMount(configId, {
+    source: 'manual',
+    openSystemAutomountInFinder: true
+  }))
   ipcMain.handle('get-mount-status', (_, configId) => mountManager.getStatus(configId))
   ipcMain.handle('get-all-statuses', () => mountManager.getAllStatuses())
 

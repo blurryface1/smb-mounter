@@ -26,6 +26,11 @@ function getMountLogMetadata(mount: StoredMountConfig): Record<string, unknown> 
   }
 }
 
+interface MountOperationOptions {
+  openSystemAutomountInFinder?: boolean
+  source?: 'manual' | 'autoMount' | 'autoRetry'
+}
+
 class MountManager {
   private statuses: Map<string, MountStatus> = new Map()
   private mainWindow: BrowserWindow | null = null
@@ -73,7 +78,10 @@ class MountManager {
     await Promise.allSettled(mounts.map(m => this.refreshStatus(m)))
   }
 
-  async mount(configId: string): Promise<{ success: boolean; error?: string }> {
+  async mount(
+    configId: string,
+    options: MountOperationOptions = {}
+  ): Promise<{ success: boolean; error?: string }> {
     const mount = getMountById(configId)
     if (!mount) {
       return { success: false, error: 'Mount config not found' }
@@ -83,7 +91,9 @@ class MountManager {
     const retryCount = existingStatus?.retryCount ?? 0
     await diagnosticLog('info', 'mount.start', {
       ...getMountLogMetadata(mount),
-      retryCount
+      retryCount,
+      source: options.source ?? 'manual',
+      openSystemAutomountInFinder: options.openSystemAutomountInFinder === true
     })
 
     // Update status to pending
@@ -113,11 +123,19 @@ class MountManager {
     }
 
     if (isSystemAutomountPath(mount.mountPath)) {
-      await diagnosticLog('info', 'mount.systemAutomount.start', getMountLogMetadata(mount))
-      const triggered = await triggerSystemAutomount(mount.mountPath)
+      await diagnosticLog('info', 'mount.systemAutomount.start', {
+        ...getMountLogMetadata(mount),
+        source: options.source ?? 'manual',
+        openSystemAutomountInFinder: options.openSystemAutomountInFinder === true
+      })
+      const triggered = await triggerSystemAutomount(mount.mountPath, {
+        openInFinder: options.openSystemAutomountInFinder === true
+      })
       await diagnosticLog('info', 'mount.systemAutomount.result', {
         ...getMountLogMetadata(mount),
-        triggered
+        triggered,
+        source: options.source ?? 'manual',
+        openSystemAutomountInFinder: options.openSystemAutomountInFinder === true
       })
 
       if (await isMountActive(mount.mountPath, mount)) {
@@ -252,7 +270,10 @@ class MountManager {
     return result
   }
 
-  async retryMount(configId: string): Promise<{ success: boolean; error?: string }> {
+  async retryMount(
+    configId: string,
+    options: MountOperationOptions = {}
+  ): Promise<{ success: boolean; error?: string }> {
     const existing = this.statuses.get(configId)
 
     if (existing) {
@@ -266,12 +287,14 @@ class MountManager {
     if (mount) {
       await diagnosticLog('info', 'mount.retry.start', {
         ...getMountLogMetadata(mount),
-        retryCount: (existing?.retryCount ?? 0) + 1
+        retryCount: (existing?.retryCount ?? 0) + 1,
+        source: options.source ?? 'manual',
+        openSystemAutomountInFinder: options.openSystemAutomountInFinder === true
       })
     }
 
     await flushDNS()
-    return this.mount(configId)
+    return this.mount(configId, options)
   }
 
   private notifyStatusChange(configId: string, status: MountStatus): void {

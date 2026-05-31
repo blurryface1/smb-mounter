@@ -55,7 +55,10 @@ class ConnectionMonitor {
             reason: 'autoRetry'
           })
           this.lastRetryAt.set(mount.id, Date.now())
-          await mountManager.retryMount(mount.id)
+          await mountManager.retryMount(mount.id, {
+            source: 'autoRetry',
+            openSystemAutomountInFinder: false
+          })
         }
       }
     } finally {
@@ -79,7 +82,10 @@ class ConnectionMonitor {
             mountPath: mount.mountPath,
             reason: 'autoMount'
           })
-          await mountManager.mount(mount.id)
+          await mountManager.mount(mount.id, {
+            source: 'autoMount',
+            openSystemAutomountInFinder: false
+          })
         }
       }
     }
