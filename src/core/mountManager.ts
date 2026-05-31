@@ -26,6 +26,12 @@ function getMountLogMetadata(mount: StoredMountConfig): Record<string, unknown> 
   }
 }
 
+function getFinderSMBUrl(mount: StoredMountConfig): string {
+  const username = mount.username.trim()
+  const encodedUsername = username ? `${encodeURIComponent(username)}@` : ''
+  return `smb://${encodedUsername}${mount.server}/${encodeURIComponent(mount.shareName)}`
+}
+
 interface MountOperationOptions {
   openSystemAutomountInFinder?: boolean
   source?: 'manual' | 'autoMount' | 'autoRetry'
@@ -129,7 +135,8 @@ class MountManager {
         openSystemAutomountInFinder: options.openSystemAutomountInFinder === true
       })
       const triggered = await triggerSystemAutomount(mount.mountPath, {
-        openInFinder: options.openSystemAutomountInFinder === true
+        openInFinder: options.openSystemAutomountInFinder === true,
+        finderTarget: getFinderSMBUrl(mount)
       })
       await diagnosticLog('info', 'mount.systemAutomount.result', {
         ...getMountLogMetadata(mount),

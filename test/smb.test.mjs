@@ -119,3 +119,32 @@ test('can open Finder when explicitly allowed for a system SMB automount path', 
     ['/usr/bin/open', ['/System/Volumes/Data/mnt/SMB/UNRAID']]
   ])
 })
+
+test('can open a Finder SMB URL instead of the system SMB automount path', async () => {
+  const calls = []
+  let active = false
+
+  const result = await triggerSystemAutomount('/System/Volumes/Data/mnt/SMB/文件', {
+    run: async (command, args) => {
+      calls.push([command, args])
+      if (command === '/bin/ls') {
+        throw new Error('ls did not activate autofs')
+      }
+      if (command === '/usr/bin/open' && args[0] === 'smb://admin@FNNAS.local/%E6%96%87%E4%BB%B6') {
+        active = true
+      }
+    },
+    isActive: async () => active,
+    wait: async () => undefined,
+    attempts: 1,
+    openInFinder: true,
+    finderTarget: 'smb://admin@FNNAS.local/%E6%96%87%E4%BB%B6',
+    log: async () => undefined
+  })
+
+  assert.equal(result, true)
+  assert.deepEqual(calls, [
+    ['/bin/ls', ['/System/Volumes/Data/mnt/SMB/文件']],
+    ['/usr/bin/open', ['smb://admin@FNNAS.local/%E6%96%87%E4%BB%B6']]
+  ])
+})

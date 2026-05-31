@@ -27,6 +27,7 @@ interface SystemAutomountTriggerOptions {
   wait?: (ms: number) => Promise<void>
   attempts?: number
   openInFinder?: boolean
+  finderTarget?: string
   log?: DiagnosticLogRunner
 }
 
@@ -103,6 +104,7 @@ export async function triggerSystemAutomount(
   const attempts = options.attempts ?? 10
   const log = options.log ?? diagnosticLog
   const metadata = { mountPath }
+  const finderTarget = options.finderTarget ?? mountPath
 
   try {
     await log('info', 'systemAutomount.trigger.ls', metadata)
@@ -123,11 +125,15 @@ export async function triggerSystemAutomount(
   }
 
   try {
-    await log('info', 'systemAutomount.trigger.openFinder', metadata)
-    await run('/usr/bin/open', [mountPath])
+    await log('info', 'systemAutomount.trigger.openFinder', {
+      ...metadata,
+      finderTarget
+    })
+    await run('/usr/bin/open', [finderTarget])
   } catch (error: any) {
     await log('warn', 'systemAutomount.trigger.openFinder', {
       ...metadata,
+      finderTarget,
       error: error?.message ?? String(error)
     })
     return false
