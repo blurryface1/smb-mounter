@@ -1,6 +1,6 @@
 {
   "name": "smb-mounter",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "macOS SMB mount manager",
   "author": "SMB Mounter Team",
   "main": "out/main/index.js",
