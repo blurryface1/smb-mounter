@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createRequire } from 'node:module'
+import { EventEmitter } from 'node:events'
 
 const require = createRequire(import.meta.url)
 const {
@@ -8,6 +9,12 @@ const {
   triggerSystemAutomount,
   parseSMBMountLine
 } = require('../out-test/core/smb.js')
+const childProcess = require('node:child_process')
+
+function loadSMBFresh() {
+  delete require.cache[require.resolve('../out-test/core/smb.js')]
+  return require('../out-test/core/smb.js')
+}
 
 test('recognizes macOS system SMB automount paths', () => {
   assert.equal(isSystemAutomountPath('/System/Volumes/Data/mnt/SMB/文件'), true)
@@ -30,6 +37,32 @@ test('parses percent-encoded SMB share names from mount output', () => {
     username: 'admin',
     mountPath: '/System/Volumes/Data/mnt/SMB/文件'
   })
+})
+
+test('redacts passwords from mount_smbfs failure messages', async () => {
+  const originalSpawn = childProcess.spawn
+
+  try {
+    childProcess.spawn = () => {
+      const proc = new EventEmitter()
+      proc.stderr = new EventEmitter()
+      process.nextTick(() => {
+        proc.stderr.emit('data', 'mount_smbfs: mount error: //admin:super-secret@192.168.31.6/files: File exists\n')
+        proc.emit('close', 64)
+      })
+      return proc
+    }
+
+    const { mountSMB } = loadSMBFresh()
+    const result = await mountSMB('192.168.31.6', 'files', 'admin', 'super-secret', '/tmp')
+
+    assert.equal(result.success, false)
+    assert.equal(result.error.includes('super-secret'), false)
+    assert.equal(result.error.includes('//admin:***@192.168.31.6/files'), true)
+  } finally {
+    childProcess.spawn = originalSpawn
+    delete require.cache[require.resolve('../out-test/core/smb.js')]
+  }
 })
 
 test('does not open Finder by default when ls does not activate a system SMB automount path', async () => {

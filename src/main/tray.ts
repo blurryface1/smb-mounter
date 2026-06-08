@@ -1,5 +1,6 @@
 // src/main/tray.ts
 import { Tray, Menu, BrowserWindow, nativeImage, app } from 'electron'
+import type { NativeImage } from 'electron'
 import { join } from 'path'
 
 let tray: Tray | null = null
@@ -12,16 +13,20 @@ function getAssetPath(filename: string): string {
   return join(__dirname, '../../assets', filename)
 }
 
-export function setupTray(mainWindow: BrowserWindow): void {
-  const iconPath = getAssetPath('trayConnected.png')
-  const icon = nativeImage.createFromPath(iconPath)
+function createTrayImage(filename: string): NativeImage {
+  const icon = nativeImage.createFromPath(getAssetPath(filename))
 
-  // Fallback to empty icon if file not found
   if (icon.isEmpty()) {
-    tray = new Tray(nativeImage.createEmpty())
-  } else {
-    tray = new Tray(icon.resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE }))
+    return nativeImage.createEmpty()
   }
+
+  const resizedIcon = icon.resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE })
+  resizedIcon.setTemplateImage(true)
+  return resizedIcon
+}
+
+export function setupTray(mainWindow: BrowserWindow): void {
+  tray = new Tray(createTrayImage('trayConnected.png'))
 
   updateTrayMenu(mainWindow)
 
@@ -70,10 +75,5 @@ export function updateTrayIcon(status: 'connected' | 'disconnected' | 'error'): 
     error: 'trayError.png'
   }
 
-  const iconPath = getAssetPath(iconMap[status])
-  const icon = nativeImage.createFromPath(iconPath)
-
-  if (!icon.isEmpty()) {
-    tray.setImage(icon.resize({ width: TRAY_ICON_SIZE, height: TRAY_ICON_SIZE }))
-  }
+  tray.setImage(createTrayImage(iconMap[status]))
 }

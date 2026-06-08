@@ -18,6 +18,18 @@ interface MountStatusChangedEvent {
   status: MountStatus
 }
 
+interface DiscoveredSMBServer {
+  name: string
+  serviceName: string
+  host?: string
+}
+
+interface DiscoveredSMBShare {
+  shareName: string
+  isHidden: boolean
+  isAdministrative: boolean
+}
+
 declare global {
   interface Window {
     api: {
@@ -28,6 +40,13 @@ declare global {
       deleteMount: (id: string) => Promise<boolean>
       getSettings: () => Promise<AppSettings>
       updateSettings: (updates: Partial<AppSettings>) => Promise<AppSettings>
+      discoverSMBServers: () => Promise<DiscoveredSMBServer[]>
+      listSMBShares: (input: {
+        server: string
+        username: string
+        password: string
+        includeHidden?: boolean
+      }) => Promise<DiscoveredSMBShare[]>
       mount: (id: string) => Promise<MountOperationResult>
       unmount: (id: string) => Promise<MountOperationResult>
       retryMount: (id: string) => Promise<MountOperationResult>

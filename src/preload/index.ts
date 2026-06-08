@@ -10,6 +10,13 @@ const api = {
   deleteMount: (id: string) => ipcRenderer.invoke('delete-mount', id),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   updateSettings: (updates: any) => ipcRenderer.invoke('update-settings', updates),
+  discoverSMBServers: () => ipcRenderer.invoke('discover-smb-servers'),
+  listSMBShares: (input: {
+    server: string
+    username: string
+    password: string
+    includeHidden?: boolean
+  }) => ipcRenderer.invoke('list-smb-shares', input),
 
   // Mount operations
   mount: (configId: string) => ipcRenderer.invoke('mount', configId),

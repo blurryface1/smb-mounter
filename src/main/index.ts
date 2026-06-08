@@ -4,6 +4,7 @@ import { join } from 'path'
 import { setupTray } from './tray'
 import { setupIPC } from './ipc'
 import { setupAutoLauncher } from './autoLauncher'
+import { configureDocklessMenuBarMode } from './dockVisibility'
 import { mountManager } from '../core/mountManager'
 import { connectionMonitor } from '../core/connectionMonitor'
 
@@ -63,6 +64,8 @@ if (!gotSingleInstanceLock) {
   })
 
   app.whenReady().then(() => {
+    configureDocklessMenuBarMode(app)
+
     mainWindow = createMainWindow()
     mountManager.setMainWindow(mainWindow)
 

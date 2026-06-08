@@ -3,6 +3,7 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { isAbsolute, normalize } from 'path'
 import { mountManager } from '../core/mountManager'
 import { connectionMonitor } from '../core/connectionMonitor'
+import { discoverSMBServers, listSMBShares } from '../core/shareDiscovery'
 import {
   loadConfig,
   getMounts,
@@ -167,6 +168,28 @@ export function setupIPC(mainWindow: BrowserWindow): void {
 
   // Detect system mounts
   ipcMain.handle('detect-system-mounts', (): DetectedMount[] => detectSystemSMBMounts())
+  ipcMain.handle('discover-smb-servers', async () => discoverSMBServers())
+  ipcMain.handle('list-smb-shares', async (_, input) => {
+    if (!isRecord(input)) {
+      return []
+    }
+
+    const { server, username, password, includeHidden } = input
+    if (
+      typeof server !== 'string' ||
+      typeof username !== 'string' ||
+      typeof password !== 'string'
+    ) {
+      return []
+    }
+
+    return listSMBShares({
+      server,
+      username,
+      password,
+      includeHidden: includeHidden === true
+    })
+  })
 
   ipcMain.handle('select-directory', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {

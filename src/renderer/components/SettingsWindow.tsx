@@ -62,11 +62,17 @@ export default function SettingsWindow() {
     setShowForm(true)
   }
 
-  const handleSave = async (data: any) => {
+  const handleSave = async (data: any, options?: { mountAfterSave?: boolean }) => {
     if (editingMount) {
       await updateMount(editingMount.id, data)
     } else {
-      await addMount(data)
+      const addedMount = await addMount(data)
+      if (options?.mountAfterSave) {
+        const result = await mount(addedMount.id)
+        if (!result.success && result.error) {
+          console.error(t.errors.mountFailed, result.error)
+        }
+      }
     }
     setShowForm(false)
     setEditingMount(null)
@@ -228,6 +234,7 @@ export default function SettingsWindow() {
       {showForm && (
         <MountForm
           mount={editingMount}
+          mounts={mounts}
           onSave={handleSave}
           onCancel={() => {
             setShowForm(false)

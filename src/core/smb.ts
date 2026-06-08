@@ -85,6 +85,10 @@ export function safeDecodeURIComponent(value: string): string {
   }
 }
 
+function redactSMBUrlPassword(message: string): string {
+  return message.replace(/\/\/([^:@/\s]+):([^@/\s]+)@/g, '//$1:***@')
+}
+
 export function isSystemAutomountPath(mountPath: string): boolean {
   const normalizedPath = mountPath.replace(/\/+$/, '')
   return normalizedPath.startsWith(`${SYSTEM_SMB_AUTOMOUNT_ROOT}/`)
@@ -220,13 +224,13 @@ export async function mountSMB(
       } else {
         resolve({
           success: false,
-          error: stderr || `mount_smbfs exited with code ${code}`
+          error: redactSMBUrlPassword(stderr || `mount_smbfs exited with code ${code}`)
         })
       }
     })
 
     proc.on('error', (err) => {
-      resolve({ success: false, error: err.message })
+      resolve({ success: false, error: redactSMBUrlPassword(err.message) })
     })
   })
 }

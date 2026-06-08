@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { MountConfig } from '../hooks/useMounts'
 import { useConfig } from '../hooks/useConfig'
 import { useI18n } from '../i18n'
+import { buildDiscoveredShareOption, getGeneratedMountPath } from '../ui/shareDiscoveryPresentation'
 
 interface MountFormProps {
   mount?: MountConfig | null
-  onSave: (data: FormData) => Promise<void>
+  mounts: MountConfig[]
+  onSave: (data: FormData, options?: { mountAfterSave?: boolean }) => Promise<void>
   onCancel: () => void
 }
 
@@ -25,6 +27,20 @@ interface FormSectionProps {
   title: string
   children: React.ReactNode
 }
+
+interface DiscoveredSMBServer {
+  name: string
+  serviceName: string
+  host?: string
+}
+
+interface DiscoveredSMBShare {
+  shareName: string
+  isHidden: boolean
+  isAdministrative: boolean
+}
+
+type FormMode = 'browse' | 'manual'
 
 const emptyForm: FormData = {
   name: '',
@@ -51,9 +67,16 @@ function FormSection({ title, children }: FormSectionProps) {
   )
 }
 
-export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
+export default function MountForm({ mount, mounts, onSave, onCancel }: MountFormProps) {
   const { t } = useI18n()
   const [formData, setFormData] = useState<FormData>(emptyForm)
+  const [mode, setMode] = useState<FormMode>(mount ? 'manual' : 'browse')
+  const [servers, setServers] = useState<DiscoveredSMBServer[]>([])
+  const [selectedServer, setSelectedServer] = useState('')
+  const [shares, setShares] = useState<DiscoveredSMBShare[]>([])
+  const [includeHidden, setIncludeHidden] = useState(false)
+  const [discoveringServers, setDiscoveringServers] = useState(false)
+  const [listingShares, setListingShares] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { settings } = useConfig()
@@ -76,8 +99,29 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
         ...emptyForm,
         mountPath: settings?.defaultMountPath || '/Users/Shared/SMB'
       })
+      setMode('browse')
+      setSelectedServer('')
+      setShares([])
     }
   }, [mount, settings])
+
+  const discoverServers = async () => {
+    setError(null)
+    setDiscoveringServers(true)
+    try {
+      setServers(await window.api.discoverSMBServers())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to discover SMB servers')
+    } finally {
+      setDiscoveringServers(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!mount) {
+      void discoverServers()
+    }
+  }, [mount])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -137,8 +181,52 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
     void applySelectedDirectory(true)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleListShares = async () => {
+    setError(null)
+
+    if (!selectedServer.trim()) {
+      setError(t.form.selectServer)
+      return
+    }
+
+    if (!formData.username.trim()) {
+      setError(t.form.username + ' is required')
+      return
+    }
+
+    if (!formData.password) {
+      setError(t.form.password + ' is required')
+      return
+    }
+
+    setListingShares(true)
+    try {
+      const listedShares = await window.api.listSMBShares({
+        server: selectedServer,
+        username: formData.username,
+        password: formData.password,
+        includeHidden
+      })
+      setShares(listedShares)
+    } catch {
+      setError('Failed to list SMB shares')
+    } finally {
+      setListingShares(false)
+    }
+  }
+
+  const handleSelectShare = (share: DiscoveredSMBShare) => {
+    const defaultMountPath = settings?.defaultMountPath || '/Users/Shared/SMB'
+    setFormData(prev => ({
+      ...prev,
+      name: prev.name.trim() ? prev.name : share.shareName,
+      server: selectedServer,
+      shareName: share.shareName,
+      mountPath: getGeneratedMountPath(defaultMountPath, share.shareName)
+    }))
+  }
+
+  const saveForm = async (mountAfterSave: boolean) => {
     setError(null)
 
     if (!formData.name.trim()) {
@@ -165,12 +253,17 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
 
     setSaving(true)
     try {
-      await onSave(formData)
+      await onSave(formData, { mountAfterSave })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    void saveForm(false)
   }
 
   return (
@@ -189,6 +282,179 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
             </div>
           )}
 
+          {!mount && (
+            <div className="flex rounded-md border border-gray-200 p-1 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => setMode('browse')}
+                className={`flex-1 px-3 py-1.5 text-sm rounded transition-colors ${
+                  mode === 'browse'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                }`}
+              >
+                {t.form.browseMode}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('manual')}
+                className={`flex-1 px-3 py-1.5 text-sm rounded transition-colors ${
+                  mode === 'manual'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                }`}
+              >
+                {t.form.manualMode}
+              </button>
+            </div>
+          )}
+
+          {!mount && mode === 'browse' && (
+            <FormSection title={t.form.discoverServers}>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t.form.discoveryHint}</p>
+
+              <div className="flex gap-2">
+                <select
+                  value={selectedServer}
+                  onChange={(event) => {
+                    setSelectedServer(event.target.value)
+                    setShares([])
+                    setFormData(prev => ({
+                      ...prev,
+                      name: '',
+                      server: '',
+                      shareName: '',
+                      mountPath: settings?.defaultMountPath || '/Users/Shared/SMB'
+                    }))
+                  }}
+                  className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+                >
+                  <option value="">{servers.length === 0 ? t.form.noServers : t.form.selectServer}</option>
+                  {servers.map(server => (
+                    <option key={server.serviceName} value={server.host ?? server.name}>
+                      {server.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={discoverServers}
+                  disabled={discoveringServers}
+                  className="shrink-0 px-3 py-2 text-sm text-gray-700 border border-gray-300 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  {discoveringServers ? t.form.discoveringServers : t.refresh}
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t.form.credentialsHint}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
+                    {t.form.username}
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+                    placeholder={t.form.username}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
+                    {t.form.password}
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+                    placeholder={t.form.password}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                  <input
+                    type="checkbox"
+                    checked={includeHidden}
+                    onChange={(event) => setIncludeHidden(event.target.checked)}
+                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                  />
+                  {t.form.showHiddenShares}
+                </label>
+                <button
+                  type="button"
+                  onClick={handleListShares}
+                  disabled={listingShares || !selectedServer}
+                  className="px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50"
+                >
+                  {listingShares ? t.form.listingShares : t.form.listShares}
+                </button>
+              </div>
+
+              {shares.length > 0 && (
+                <div className="border border-gray-200 rounded-md overflow-hidden dark:border-gray-800">
+                  {shares.map(share => {
+                    const option = buildDiscoveredShareOption({
+                      server: selectedServer,
+                      shareName: share.shareName,
+                      username: formData.username,
+                      savedMounts: mounts
+                    })
+                    return (
+                      <button
+                        key={share.shareName}
+                        type="button"
+                        onClick={() => handleSelectShare(share)}
+                        disabled={option.alreadySaved}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left text-sm border-b border-gray-100 last:border-b-0 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-transparent dark:border-gray-800 dark:hover:bg-gray-800"
+                      >
+                        <span className="font-medium text-gray-900 dark:text-gray-100">{share.shareName}</span>
+                        {option.alreadySaved && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{t.form.alreadySaved}</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {formData.shareName && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
+                      {t.form.shareName}
+                    </label>
+                    <input
+                      type="text"
+                      name="shareName"
+                      value={formData.shareName}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
+                      {t.form.localMountPoint}
+                    </label>
+                    <input
+                      type="text"
+                      name="mountPath"
+                      value={formData.mountPath}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+              )}
+            </FormSection>
+          )}
+
+          {(mount || mode === 'manual') && (
           <FormSection title={t.form.locationSection}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
@@ -267,7 +533,9 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t.form.chooseMountPathHint}</p>
             </div>
           </FormSection>
+          )}
 
+          {(mount || mode === 'manual') && (
           <FormSection title={t.form.credentialsSection}>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -298,6 +566,7 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
               </div>
             </div>
           </FormSection>
+          )}
 
           <FormSection title={t.form.automationSection}>
             <div className="flex gap-6">
@@ -353,10 +622,20 @@ export default function MountForm({ mount, onSave, onCancel }: MountFormProps) {
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-md transition-colors disabled:opacity-50 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              {saving ? '...' : t.save}
+              {saving ? '...' : (mount ? t.save : t.form.saveOnly)}
             </button>
+            {!mount && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void saveForm(true)}
+                className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50"
+              >
+                {saving ? '...' : t.form.saveAndMount}
+              </button>
+            )}
           </div>
         </form>
       </div>
