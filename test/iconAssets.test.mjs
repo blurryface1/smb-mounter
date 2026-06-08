@@ -4,12 +4,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { createRequire } from 'node:module'
+import zlib from 'node:zlib'
 
 const require = createRequire(import.meta.url)
 const {
   createPNG,
   drawDockIcon,
   drawTrayIcon,
+  drawTrayTemplateIcon,
   generateIcons
 } = require('../create-icons.js')
 
@@ -21,6 +23,47 @@ function readPngInfo(buffer) {
     bitDepth: buffer[24],
     colorType: buffer[25]
   }
+}
+
+function readPngPixels(buffer) {
+  const info = readPngInfo(buffer)
+  const chunks = []
+  let offset = 8
+
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32BE(offset)
+    const type = buffer.subarray(offset + 4, offset + 8).toString('ascii')
+    const data = buffer.subarray(offset + 8, offset + 8 + length)
+    if (type === 'IDAT') {
+      chunks.push(data)
+    }
+    offset += 12 + length
+  }
+
+  const inflated = zlib.inflateSync(Buffer.concat(chunks))
+  const pixels = new Uint8ClampedArray(info.width * info.height * 4)
+  const stride = 1 + info.width * 4
+
+  for (let y = 0; y < info.height; y++) {
+    assert.equal(inflated[y * stride], 0)
+    for (let x = 0; x < info.width; x++) {
+      const source = y * stride + 1 + x * 4
+      const target = (y * info.width + x) * 4
+      pixels[target] = inflated[source]
+      pixels[target + 1] = inflated[source + 1]
+      pixels[target + 2] = inflated[source + 2]
+      pixels[target + 3] = inflated[source + 3]
+    }
+  }
+
+  return {
+    ...info,
+    pixels
+  }
+}
+
+function alphaAt(image, x, y) {
+  return image.pixels[(y * image.width + x) * 4 + 3]
 }
 
 test('createPNG emits transparent RGBA PNGs with the requested dimensions', () => {
@@ -36,6 +79,18 @@ test('createPNG emits transparent RGBA PNGs with the requested dimensions', () =
     bitDepth: 8,
     colorType: 6
   })
+})
+
+test('tray template renderer leaves cutouts for macOS menu bar tinting', () => {
+  const connected = readPngPixels(drawTrayTemplateIcon(32, 'connected'))
+  const disconnected = drawTrayTemplateIcon(32, 'disconnected')
+  const error = drawTrayTemplateIcon(32, 'error')
+
+  assert.equal(alphaAt(connected, 5, 10), 255)
+  assert.equal(alphaAt(connected, 13, 16), 0)
+  assert.equal(alphaAt(connected, 23, 22), 255)
+  assert.notDeepEqual(connected.pixels, readPngPixels(disconnected).pixels)
+  assert.notDeepEqual(connected.pixels, readPngPixels(error).pixels)
 })
 
 test('dock and tray renderers produce non-empty non-solid PNGs', () => {

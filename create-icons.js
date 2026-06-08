@@ -14,6 +14,7 @@ const COLORS = {
   accentDark: [13, 126, 116, 255],
   trayGlyph: [245, 247, 250, 255],
   trayShadow: [20, 24, 31, 190],
+  trayTemplateGlyph: [0, 0, 0, 255],
   connected: [31, 185, 95, 255],
   disconnected: [142, 148, 160, 255],
   error: [224, 67, 67, 255]
@@ -142,6 +143,45 @@ function fillRoundedRect(surface, x, y, width, height, radius, color) {
   }
 }
 
+function clearPixel(surface, x, y) {
+  const px = Math.round(x)
+  const py = Math.round(y)
+  if (px < 0 || py < 0 || px >= surface.width || py >= surface.height) return
+
+  const index = (py * surface.width + px) * 4
+  surface.pixels[index] = 0
+  surface.pixels[index + 1] = 0
+  surface.pixels[index + 2] = 0
+  surface.pixels[index + 3] = 0
+}
+
+function clearRoundedRect(surface, x, y, width, height, radius) {
+  const left = Math.floor(x)
+  const top = Math.floor(y)
+  const right = Math.ceil(x + width)
+  const bottom = Math.ceil(y + height)
+
+  for (let py = top; py < bottom; py++) {
+    for (let px = left; px < right; px++) {
+      if (pointInRoundedRect(px + 0.5, py + 0.5, x, y, width, height, radius)) {
+        clearPixel(surface, px, py)
+      }
+    }
+  }
+}
+
+function strokeRoundedRect(surface, x, y, width, height, radius, strokeWidth, color) {
+  fillRoundedRect(surface, x, y, width, height, radius, color)
+  clearRoundedRect(
+    surface,
+    x + strokeWidth,
+    y + strokeWidth,
+    width - strokeWidth * 2,
+    height - strokeWidth * 2,
+    Math.max(0, radius - strokeWidth)
+  )
+}
+
 function fillRoundedGradient(surface, x, y, width, height, radius, topColor, bottomColor) {
   const left = Math.floor(x)
   const top = Math.floor(y)
@@ -171,6 +211,23 @@ function fillCircle(surface, cx, cy, radius, color) {
       const dy = y + 0.5 - cy
       if (dx * dx + dy * dy <= radius * radius) {
         blendPixel(surface, x, y, color)
+      }
+    }
+  }
+}
+
+function clearCircle(surface, cx, cy, radius) {
+  const left = Math.floor(cx - radius)
+  const top = Math.floor(cy - radius)
+  const right = Math.ceil(cx + radius)
+  const bottom = Math.ceil(cy + radius)
+
+  for (let y = top; y <= bottom; y++) {
+    for (let x = left; x <= right; x++) {
+      const dx = x + 0.5 - cx
+      const dy = y + 0.5 - cy
+      if (dx * dx + dy * dy <= radius * radius) {
+        clearPixel(surface, x, y)
       }
     }
   }
@@ -233,6 +290,40 @@ function drawTrayIcon(size, status) {
   return surfaceToPNG(surface)
 }
 
+function drawTrayTemplateStatus(surface, status, s) {
+  const color = COLORS.trayTemplateGlyph
+
+  clearCircle(surface, 23 * s, 22 * s, 7 * s)
+
+  if (status === 'error') {
+    drawLine(surface, 20 * s, 19 * s, 26 * s, 25 * s, 2.2 * s, color)
+    drawLine(surface, 26 * s, 19 * s, 20 * s, 25 * s, 2.2 * s, color)
+    return
+  }
+
+  if (status === 'connected') {
+    drawLine(surface, 19.5 * s, 22 * s, 22 * s, 24.5 * s, 2.2 * s, color)
+    drawLine(surface, 22 * s, 24.5 * s, 26.5 * s, 19 * s, 2.2 * s, color)
+    return
+  }
+
+  fillCircle(surface, 23 * s, 22 * s, 4.4 * s, color)
+  clearCircle(surface, 23 * s, 22 * s, 2.1 * s)
+}
+
+function drawTrayTemplateIcon(size, status) {
+  const surface = createSurface(size)
+  const s = size / 32
+  const color = COLORS.trayTemplateGlyph
+
+  strokeRoundedRect(surface, 5 * s, 9 * s, 18 * s, 13 * s, 3 * s, 2 * s, color)
+  strokeRoundedRect(surface, 7 * s, 6 * s, 14 * s, 6 * s, 2 * s, 2 * s, color)
+  drawLine(surface, 9 * s, 14 * s, 19 * s, 14 * s, 1.5 * s, color)
+  drawTrayTemplateStatus(surface, status, s)
+
+  return surfaceToPNG(surface)
+}
+
 function ensureDir(path) {
   if (!existsSync(path)) {
     mkdirSync(path, { recursive: true })
@@ -251,9 +342,9 @@ function generateIcons(options = {}) {
   ensureDir(rendererAssetsDir)
   ensureDir(iconsetDir)
 
-  writeFileSync(join(assetsDir, 'trayConnected.png'), drawTrayIcon(32, 'connected'))
-  writeFileSync(join(assetsDir, 'trayDisconnected.png'), drawTrayIcon(32, 'disconnected'))
-  writeFileSync(join(assetsDir, 'trayError.png'), drawTrayIcon(32, 'error'))
+  writeFileSync(join(assetsDir, 'trayConnected.png'), drawTrayTemplateIcon(32, 'connected'))
+  writeFileSync(join(assetsDir, 'trayDisconnected.png'), drawTrayTemplateIcon(32, 'disconnected'))
+  writeFileSync(join(assetsDir, 'trayError.png'), drawTrayTemplateIcon(32, 'error'))
   writeFileSync(join(rendererAssetsDir, 'windowIcon.png'), drawTrayIcon(64, 'connected'))
 
   for (const [filename, size] of iconSizes) {
@@ -274,5 +365,6 @@ module.exports = {
   createPNG,
   drawDockIcon,
   drawTrayIcon,
+  drawTrayTemplateIcon,
   generateIcons
 }
