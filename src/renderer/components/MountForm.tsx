@@ -3,6 +3,7 @@ import { MountConfig } from '../hooks/useMounts'
 import { useConfig } from '../hooks/useConfig'
 import { useI18n } from '../i18n'
 import { buildDiscoveredShareOption, getGeneratedMountPath } from '../ui/shareDiscoveryPresentation'
+import { getMountDefaultName } from '../ui/mountPresentation'
 
 interface MountFormProps {
   mount?: MountConfig | null
@@ -217,9 +218,10 @@ export default function MountForm({ mount, mounts, onSave, onCancel }: MountForm
 
   const handleSelectShare = (share: DiscoveredSMBShare) => {
     const defaultMountPath = settings?.defaultMountPath || '/Users/Shared/SMB'
+    const defaultName = getMountDefaultName(selectedServer, share.shareName, mounts)
     setFormData(prev => ({
       ...prev,
-      name: prev.name.trim() ? prev.name : share.shareName,
+      name: prev.name.trim() ? prev.name : defaultName,
       server: selectedServer,
       shareName: share.shareName,
       mountPath: getGeneratedMountPath(defaultMountPath, share.shareName)
