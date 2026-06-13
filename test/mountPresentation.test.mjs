@@ -53,21 +53,6 @@ test('getPrimaryMountAction mounts disconnected and pending shares', () => {
   assert.equal(getPrimaryMountAction('pending'), 'mount')
 })
 
-test('getMountDetailParts includes share target and automation labels', () => {
-  assert.deepEqual(
-    getMountDetailParts({
-      ...baseMount,
-      autoMount: true,
-      autoRetry: true
-    }),
-    [
-      'FNNAS.local/UNRAID',
-      '/Users/Shared/SMB/UNRAID',
-      'Auto-mount',
-      'Auto-retry'
-    ]
-  )
-})
 
 
 test('truncatePath shortens long paths by omitting middle segments', () => {
@@ -87,4 +72,53 @@ test('truncatePath shortens long paths by omitting middle segments', () => {
   assert.equal(truncatePath('/Users/Shared/SMB/UNRAID/'), '/Users/Shared/SMB/UNRAID')
   // Root path stays unchanged
   assert.equal(truncatePath('/'), '/')
+})
+
+test('getMountDetailParts includes share target and automation labels with i18n prefixes', () => {
+  assert.deepEqual(
+    getMountDetailParts({
+      ...baseMount,
+      autoMount: true,
+      autoRetry: true
+    }, {
+      autoMount: 'Auto-mount',
+      autoRetry: 'Auto-retry',
+      sharePrefix: '共享',
+      localMountPrefix: '本机'
+    }),
+    [
+      '共享 FNNAS.local/UNRAID',
+      '本机 /Users/Shared/SMB/UNRAID',
+      'Auto-mount',
+      'Auto-retry'
+    ]
+  )
+  // Long paths are truncated automatically
+  assert.deepEqual(
+    getMountDetailParts({
+      ...baseMount,
+      mountPath: '/Users/Shared/SMB/Projects/2026/Archive/Alpha'
+    }, {
+      autoMount: 'Auto-mount',
+      autoRetry: 'Auto-retry',
+      sharePrefix: '共享',
+      localMountPrefix: '本机'
+    }),
+    [
+      '共享 FNNAS.local/UNRAID',
+      '本机 /Users/Shared/.../Archive/Alpha'
+    ]
+  )
+  // No labels provided: use default english labels
+  assert.deepEqual(
+    getMountDetailParts({
+      ...baseMount,
+      autoMount: true
+    }),
+    [
+      'Share FNNAS.local/UNRAID',
+      'Local /Users/Shared/SMB/UNRAID',
+      'Auto-mount'
+    ]
+  )
 })

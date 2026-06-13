@@ -61,11 +61,15 @@ export function getPrimaryMountAction(status: MountDisplayStatus): PrimaryMountA
 interface MountDetailLabels {
   autoMount: string
   autoRetry: string
+  sharePrefix: string
+  localMountPrefix: string
 }
 
 const defaultMountDetailLabels: MountDetailLabels = {
-  autoMount: 'Auto-mount',
-  autoRetry: 'Auto-retry'
+  autoMount: "Auto-mount",
+  autoRetry: "Auto-retry",
+  sharePrefix: "Share",
+  localMountPrefix: "Local",
 }
 
 /**
@@ -86,19 +90,20 @@ export function truncatePath(path: string): string {
 
 export function getMountDetailParts(
   mount: MountSummaryInput,
-  labels: MountDetailLabels = defaultMountDetailLabels
+  labels: Partial<MountDetailLabels> = defaultMountDetailLabels
 ): string[] {
+  const mergedLabels = { ...defaultMountDetailLabels, ...labels }
   const parts = [
-    `${mount.server}/${mount.shareName}`,
-    mount.mountPath
+    `${mergedLabels.sharePrefix} ${mount.server}/${mount.shareName}`,
+    `${mergedLabels.localMountPrefix} ${truncatePath(mount.mountPath)}`,
   ]
 
   if (mount.autoMount) {
-    parts.push(labels.autoMount)
+    parts.push(mergedLabels.autoMount)
   }
 
   if (mount.autoRetry) {
-    parts.push(labels.autoRetry)
+    parts.push(mergedLabels.autoRetry)
   }
 
   return parts

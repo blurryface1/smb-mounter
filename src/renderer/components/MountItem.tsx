@@ -37,7 +37,9 @@ export default function MountItem({
   const primaryAction = getPrimaryMountAction(currentStatus)
   const detailParts = getMountDetailParts(mount, {
     autoMount: t.form.autoMount,
-    autoRetry: t.form.autoRetry
+    autoRetry: t.form.autoRetry,
+    sharePrefix: t.form.sharePrefix,
+    localMountPrefix: t.form.localMountPrefix
   })
   const statusTone = currentStatus === 'mounted'
     ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300'
