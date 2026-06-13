@@ -68,6 +68,22 @@ const defaultMountDetailLabels: MountDetailLabels = {
   autoRetry: 'Auto-retry'
 }
 
+/**
+ * Truncates long path by omitting middle segments, keeping first and last parts
+ * Preserves root path, normalizes trailing slashes before truncation
+ */
+export function truncatePath(path: string): string {
+  const normalized = path.replace(/\/+$/, "") || "/";
+  if (normalized === "/") return "/";
+
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length <= 4) return normalized;
+
+  const first = segments.slice(0, 2).join("/");
+  const last = segments.slice(-2).join("/");
+  return `/${first}/.../${last}`;
+}
+
 export function getMountDetailParts(
   mount: MountSummaryInput,
   labels: MountDetailLabels = defaultMountDetailLabels

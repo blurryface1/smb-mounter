@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  truncatePath,
+
   getMountSummary,
   getPrimaryMountAction,
   getMountDetailParts
@@ -65,4 +67,24 @@ test('getMountDetailParts includes share target and automation labels', () => {
       'Auto-retry'
     ]
   )
+})
+
+
+test('truncatePath shortens long paths by omitting middle segments', () => {
+  // Short paths stay unchanged
+  assert.equal(truncatePath('/Users/Shared/SMB/UNRAID'), '/Users/Shared/SMB/UNRAID')
+  // Long paths truncate middle, keep first two and last two segments
+  assert.equal(
+    truncatePath('/Users/Shared/SMB/Projects/2026/Project-Archive/Old/Versions/Alpha'),
+    '/Users/Shared/.../Versions/Alpha'
+  )
+  // Path with many segments truncates to keep first two and last two
+  assert.equal(
+    truncatePath('/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p'),
+    '/a/b/.../o/p'
+  )
+  // Path with trailing slash is normalized before truncation
+  assert.equal(truncatePath('/Users/Shared/SMB/UNRAID/'), '/Users/Shared/SMB/UNRAID')
+  // Root path stays unchanged
+  assert.equal(truncatePath('/'), '/')
 })
