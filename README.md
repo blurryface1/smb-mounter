@@ -45,8 +45,23 @@ macOS can mount SMB shares natively, but managing multiple shares across differe
 
 ## Screenshots
 
-<!-- TODO: add screenshots -->
-> _Screenshots coming soon. In the meantime, clone and run `npm run dev` to see it live._
+### Main Window
+
+Manage all your SMB shares from a single, compact window. See live mount status, open shares in Finder, and mount or unmount with one click.
+
+<img src="assets/screenshot-main.png" width="700" alt="SMB Mounter main window" />
+
+### Add a Share
+
+Discover SMB servers on your local network, or enter server details manually. Save credentials securely and configure auto-mount / auto-retry.
+
+<img src="assets/screenshot-add.png" width="700" alt="Add SMB share modal" />
+
+### Menu Bar Access
+
+SMB Mounter lives in your menu bar. Open settings, refresh all mounts, or quit from the tray menu.
+
+<img src="assets/screenshot-tray.png" width="280" alt="SMB Mounter tray menu" />
 
 ---
 
