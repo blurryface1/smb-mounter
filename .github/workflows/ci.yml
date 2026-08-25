@@ -1,0 +1,34 @@
+name: 持续集成
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: 验证与打包
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安装依赖
+        run: npm ci
+      - name: 运行回归测试
+        run: npm test
+      - name: 检查 TypeScript
+        run: npm run typecheck
+      - name: 检查生产构建
+        run: npm run build
+      - name: 检查依赖漏洞
+        run: npm run audit
+      - name: 检查 macOS 应用打包
+        run: npm run pack

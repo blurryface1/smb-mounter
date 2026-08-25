@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createRequire } from 'node:module'
+import { EventEmitter } from 'node:events'
 
 const require = createRequire(import.meta.url)
 const {
@@ -48,6 +49,34 @@ test('can attach resolved hostnames to discovered SMB servers', async () => {
     { name: 'FNNAS', serviceName: 'FNNAS' },
     { name: 'Mac mini', serviceName: 'Mac mini', host: 'mac-mini.local' }
   ])
+})
+
+test('resolves discovered SMB servers concurrently', async () => {
+  const output = [
+    '10:13:14.537  Add        3  14 local.               _smb._tcp.           FNNAS',
+    '10:13:15.100  Add        3  14 local.               _smb._tcp.           Mac mini'
+  ].join('\n')
+  const calls = []
+  let releaseResolvers
+  const resolverGate = new Promise(resolve => {
+    releaseResolvers = resolve
+  })
+
+  const discovery = discoverSMBServers({
+    browse: async () => output,
+    resolve: async (serviceName) => {
+      calls.push(serviceName)
+      await resolverGate
+      return `${serviceName}.local`
+    }
+  })
+
+  await new Promise(resolve => setImmediate(resolve))
+  const callsBeforeRelease = [...calls]
+  releaseResolvers()
+  await discovery
+
+  assert.deepEqual(callsBeforeRelease, ['FNNAS', 'Mac mini'])
 })
 
 test('discovers native SMB server hostnames with dns-sd resolve output', async () => {
@@ -246,11 +275,26 @@ test('lists visible shares from a selected SMB server', async () => {
 })
 
 test('does not expose passwords when native share listing fails', async () => {
+  const originalSpawn = childProcess.spawn
   const originalExecFile = childProcess.execFile
+  let spawned = false
 
   try {
     childProcess.execFile = (_command, args, _options, callback) => {
       callback(new Error(`failed command: ${args.join(' ')}`))
+    }
+    childProcess.spawn = (_command, args) => {
+      spawned = true
+      assert.equal(args.some(arg => arg.includes('super-secret')), false)
+      const proc = new EventEmitter()
+      proc.stdout = new EventEmitter()
+      proc.stderr = new EventEmitter()
+      proc.stdin = { write() {}, end() {} }
+      process.nextTick(() => {
+        proc.stderr.emit('data', 'authentication failed for super-secret')
+        proc.emit('close', 1)
+      })
+      return proc
     }
 
     const { listSMBShares: listWithNativeView } = loadShareDiscoveryFresh()
@@ -266,35 +310,54 @@ test('does not expose passwords when native share listing fails', async () => {
         return true
       }
     )
+    assert.equal(spawned, true)
   } finally {
+    childProcess.spawn = originalSpawn
     childProcess.execFile = originalExecFile
     delete require.cache[require.resolve('../out-test/core/shareDiscovery.js')]
   }
 })
 
 test('lists SMB shares with native smbutil when view is not injected', async () => {
+  const originalSpawn = childProcess.spawn
   const originalExecFile = childProcess.execFile
+  const input = []
 
   try {
-    childProcess.execFile = (command, args, options, callback) => {
-      assert.equal(command, 'smbutil')
+    childProcess.execFile = (command) => {
+      assert.notEqual(command, 'smbutil')
+    }
+    childProcess.spawn = (command, args) => {
+      assert.equal(command, '/usr/bin/script')
       assert.deepEqual(args, [
+        '-q',
+        '/dev/null',
+        '/usr/bin/smbutil',
         'view',
-        '-N',
-        '//admin:secret@FNNAS.local'
+        '//admin@FNNAS.local'
       ])
-      assert.deepEqual(options, {
-        timeout: 15000
-      })
-      callback(null, {
-        stdout: [
+      assert.equal(args.some(arg => arg.includes('secret')), false)
+
+      const proc = new EventEmitter()
+      proc.stdout = new EventEmitter()
+      proc.stderr = new EventEmitter()
+      proc.stdin = {
+        write(value) {
+          input.push(value)
+        },
+        end() {}
+      }
+      process.nextTick(() => {
+        proc.stdout.emit('data', 'Password for FNNAS.local:\n')
+        proc.stdout.emit('data', [
           'Share                                           Type    Comments',
           '-------------------------------                 ----    --------',
           'Photos                                          Disk',
           'IPC$                                            Pipe    IPC Service'
-        ].join('\n'),
-        stderr: ''
+        ].join('\n'))
+        proc.emit('close', 0)
       })
+      return proc
     }
 
     const { listSMBShares: listWithNativeView } = loadShareDiscoveryFresh()
@@ -307,7 +370,9 @@ test('lists SMB shares with native smbutil when view is not injected', async () 
     assert.deepEqual(shares, [
       { shareName: 'Photos', isHidden: false, isAdministrative: false }
     ])
+    assert.deepEqual(input, ['secret\n'])
   } finally {
+    childProcess.spawn = originalSpawn
     childProcess.execFile = originalExecFile
     delete require.cache[require.resolve('../out-test/core/shareDiscovery.js')]
   }

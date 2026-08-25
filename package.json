@@ -3,40 +3,46 @@
   "version": "1.0.7",
   "description": "macOS SMB mount manager",
   "author": "SMB Mounter Team",
+  "license": "MIT",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -b",
-    "test": "tsc src/core/mountIdentity.ts src/core/systemMountMatcher.ts src/core/smb.ts src/core/diagnosticLogger.ts src/core/shareDiscovery.ts src/main/dockVisibility.ts src/main/tray.ts src/renderer/ui/mountPresentation.ts src/renderer/ui/shareDiscoveryPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test test/mountIdentity.test.mjs test/iconAssets.test.mjs test/systemMountMatcher.test.mjs test/smb.test.mjs test/diagnosticLogger.test.mjs test/shareDiscovery.test.mjs test/dockVisibility.test.mjs test/tray.test.mjs test/mountPresentation.test.mjs test/shareDiscoveryPresentation.test.mjs",
+    "test": "tsc src/core/*.ts src/main/dockVisibility.ts src/main/tray.ts src/renderer/ui/mountPresentation.ts src/renderer/ui/shareDiscoveryPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test --test-concurrency=1 test/*.test.mjs",
+    "audit": "npm audit --audit-level=high",
     "preview": "electron-vite preview",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
-  },
-  "dependencies": {
-    "electron-store": "^8.1.0"
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --mac",
+    "dist:universal": "npm run build && electron-builder --mac --universal"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "electron": "^42.3.0",
-    "electron-builder": "^26.8.1",
-    "electron-vite": "^5.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
-    "typescript": "^5.3.0",
-    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.0",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0"
   },
   "build": {
     "appId": "com.smbmounter.app",
     "productName": "SMB Mounter",
     "directories": {
+      "buildResources": "build",
       "output": "release"
     },
+    "files": [
+      "out/**/*",
+      "LICENSE",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "assets",

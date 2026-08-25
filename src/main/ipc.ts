@@ -133,7 +133,7 @@ export function setupIPC(mainWindow: BrowserWindow): void {
     if (normalizedCheckInterval !== null) {
       updateSettings({ checkInterval: normalizedCheckInterval })
       if (normalizedCheckInterval !== previousSettings.checkInterval) {
-        connectionMonitor.restart()
+        await connectionMonitor.restart()
       }
     }
 

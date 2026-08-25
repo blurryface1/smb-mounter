@@ -1,5 +1,5 @@
 // src/core/crypto.ts
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto'
+import { createDecipheriv, scryptSync } from 'crypto'
 import { safeStorage } from 'electron'
 import { hostname } from 'os'
 
@@ -10,24 +10,17 @@ const AUTH_TAG_LENGTH = 16
 const MIN_BUFFER_LENGTH = SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH
 const SAFE_STORAGE_PREFIX = 'safe-storage:'
 
-/**
- * Legacy fallback warning
- *
- * New credentials use Electron safeStorage, backed by the operating system's
- * credential storage where available. The hostname-derived AES-GCM path remains
- * only so existing configs can still be decrypted and as a last-resort fallback.
- */
 function getMasterKey(): Buffer {
   const machineId = hostname()
   return scryptSync(machineId, 'smb-mounter-salt', 32)
 }
 
 export function encrypt(plaintext: string): string {
-  if (isSafeStorageAvailable()) {
-    return SAFE_STORAGE_PREFIX + safeStorage.encryptString(plaintext).toString('base64')
+  if (!isSafeStorageAvailable()) {
+    throw new Error('OS credential storage is not available')
   }
 
-  return encryptLegacy(plaintext)
+  return SAFE_STORAGE_PREFIX + safeStorage.encryptString(plaintext).toString('base64')
 }
 
 export function decrypt(encryptedData: string): string {
@@ -49,26 +42,6 @@ function isSafeStorageAvailable(): boolean {
   } catch {
     return false
   }
-}
-
-function encryptLegacy(plaintext: string): string {
-  const masterKey = getMasterKey()
-  const iv = randomBytes(IV_LENGTH)
-  const salt = randomBytes(SALT_LENGTH)
-
-  const key = scryptSync(masterKey, salt, 32)
-  const cipher = createCipheriv(ALGORITHM, key, iv)
-
-  const encrypted = Buffer.concat([
-    cipher.update(plaintext, 'utf8'),
-    cipher.final()
-  ])
-
-  const authTag = cipher.getAuthTag()
-
-  // Format: salt (32) + iv (16) + authTag (16) + encrypted
-  const result = Buffer.concat([salt, iv, authTag, encrypted])
-  return result.toString('base64')
 }
 
 function decryptLegacy(encryptedData: string): string {

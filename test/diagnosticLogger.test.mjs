@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -46,6 +46,8 @@ test('writes json lines when diagnostic mode is enabled', async () => {
     assert.equal(parsed.mountId, 'm1')
     assert.equal(parsed.server, 'nas.local')
     assert.match(parsed.ts, /^\d{4}-\d{2}-\d{2}T/)
+    assert.equal(statSync(join(baseDir, 'logs')).mode & 0o777, 0o700)
+    assert.equal(statSync(join(baseDir, 'logs', 'app.log')).mode & 0o777, 0o600)
   } finally {
     cleanup(baseDir)
   }

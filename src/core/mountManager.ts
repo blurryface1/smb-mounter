@@ -6,12 +6,13 @@ import {
   mountSMB,
   unmountSMB,
   isMountActive,
-  checkServerReachable,
+  getMountedSMBShares,
   flushDNS,
   isSystemAutomountPath,
   triggerSystemAutomount
 } from './smb'
 import { diagnosticLog } from './diagnosticLogger'
+import { isSameMountIdentity } from './mountIdentity'
 
 function getMountLogMetadata(mount: StoredMountConfig): Record<string, unknown> {
   return {
@@ -39,6 +40,7 @@ interface MountOperationOptions {
 
 class MountManager {
   private statuses: Map<string, MountStatus> = new Map()
+  private statusListeners: Set<(statuses: MountStatus[]) => void> = new Set()
   private mainWindow: BrowserWindow | null = null
 
   setMainWindow(window: BrowserWindow): void {
@@ -55,6 +57,11 @@ class MountManager {
 
   getAllStatuses(): MountStatus[] {
     return Array.from(this.statuses.values())
+  }
+
+  onStatusesChanged(listener: (statuses: MountStatus[]) => void): () => void {
+    this.statusListeners.add(listener)
+    return () => this.statusListeners.delete(listener)
   }
 
   async refreshStatus(mount: StoredMountConfig): Promise<MountStatus> {
@@ -79,9 +86,32 @@ class MountManager {
     return status
   }
 
-  async refreshAllStatuses(): Promise<void> {
+  async refreshAllStatuses(): Promise<MountStatus[]> {
     const mounts = getMounts()
-    await Promise.allSettled(mounts.map(m => this.refreshStatus(m)))
+    const mountedShares = await getMountedSMBShares()
+    const statuses = mounts.map(mount => {
+      const active = mountedShares.some(mounted => (
+        mounted.mountPath === mount.mountPath || isSameMountIdentity(mounted, mount)
+      ))
+      const status: MountStatus = {
+        configId: mount.id,
+        status: active ? 'mounted' : 'disconnected',
+        lastChecked: Date.now(),
+        retryCount: this.statuses.get(mount.id)?.retryCount ?? 0
+      }
+
+      this.statuses.set(mount.id, status)
+      this.notifyStatusChange(mount.id, status)
+      return status
+    })
+
+    await Promise.all(mounts.map((mount, index) => diagnosticLog('info', 'status.refresh', {
+      ...getMountLogMetadata(mount),
+      status: statuses[index].status,
+      retryCount: statuses[index].retryCount
+    })))
+
+    return statuses
   }
 
   async mount(
@@ -177,29 +207,6 @@ class MountManager {
       return { success: false, error: status.errorMessage }
     }
 
-    // Check server reachable
-    const reachable = await checkServerReachable(mount.server)
-    if (!reachable) {
-      await flushDNS()
-      const retryReachable = await checkServerReachable(mount.server)
-      if (!retryReachable) {
-        const status: MountStatus = {
-          configId,
-          status: 'error',
-          lastChecked: Date.now(),
-          retryCount,
-          errorMessage: `Cannot reach server ${mount.server}`
-        }
-        this.statuses.set(configId, status)
-        this.notifyStatusChange(configId, status)
-        await diagnosticLog('error', 'mount.error', {
-          ...getMountLogMetadata(mount),
-          error: status.errorMessage
-        })
-        return { success: false, error: status.errorMessage }
-      }
-    }
-
     // Get password
     const password = getDecryptedPassword(mount)
     if (!password) {
@@ -274,6 +281,10 @@ class MountManager {
       error: result.error
     })
 
+    if (result.success) {
+      this.showNotification(`${mount.name} unmounted successfully`)
+    }
+
     return result
   }
 
@@ -308,6 +319,8 @@ class MountManager {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send('mount-status-changed', { configId, status })
     }
+    const statuses = this.getAllStatuses()
+    this.statusListeners.forEach(listener => listener(statuses))
   }
 
   private showNotification(message: string): void {

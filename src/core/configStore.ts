@@ -2,12 +2,14 @@
 import { app } from 'electron'
 import { isAbsolute, normalize } from 'path'
 import { join } from 'path'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { StoredMountConfig, AppConfig, AppSettings, DEFAULT_SETTINGS } from '../types'
 import { encrypt, decrypt } from './crypto'
 
 const CONFIG_DIR = join(app.getPath('home'), '.smb-mounter')
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json')
+const CONFIG_DIR_MODE = 0o700
+const CONFIG_FILE_MODE = 0o600
 const MIN_RETRY_INTERVAL = 5
 const MAX_RETRY_INTERVAL = 300
 
@@ -110,8 +112,9 @@ function normalizeMountUpdates(updates: MountWriteInput, existing: StoredMountCo
 
 function ensureConfigDir(): void {
   if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true })
+    mkdirSync(CONFIG_DIR, { recursive: true, mode: CONFIG_DIR_MODE })
   }
+  chmodSync(CONFIG_DIR, CONFIG_DIR_MODE)
 }
 
 function loadRawConfig(): AppConfig {
@@ -144,7 +147,11 @@ export function loadConfig(): AppConfig {
 export function saveConfig(config: AppConfig): void {
   ensureConfigDir()
   try {
-    writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
+    writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), {
+      encoding: 'utf8',
+      mode: CONFIG_FILE_MODE
+    })
+    chmodSync(CONFIG_FILE, CONFIG_FILE_MODE)
   } catch (error) {
     console.error('Failed to save config:', error)
     throw new Error('Failed to save configuration file')

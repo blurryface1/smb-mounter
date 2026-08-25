@@ -7,7 +7,7 @@ SMB Mounter is a macOS Electron utility for managing saved SMB shares. It lets y
 - Compact share console with mounted/error/auto-retry summary
 - Add, edit, delete, import, mount, unmount, retry, and open SMB shares
 - Finder fallback for macOS system-managed SMB automount paths under `/System/Volumes/Data/mnt/SMB`
-- Encrypted password storage for saved shares
+- macOS credential-storage-backed passwords with read compatibility for legacy encrypted entries
 - Launch-at-login and notification settings
 - Chinese and English UI
 
@@ -31,6 +31,7 @@ Run verification:
 npm test
 npm run typecheck
 npm run build
+npm run audit
 ```
 
 ## Packaging
@@ -41,7 +42,13 @@ Create distributable macOS artifacts:
 npm run dist
 ```
 
-Generated artifacts are written to `release/` and are intentionally ignored by git. The default build uses ad-hoc macOS signing and is suitable for local testing; notarization is not configured.
+Create a universal build for both Apple Silicon and Intel Macs:
+
+```bash
+npm run dist:universal
+```
+
+Generated artifacts are written to `release/` and are intentionally ignored by git. Local builds remain unsigned when no signing identity is available. Public releases require a Developer ID Application certificate and Apple notarization credentials.
 
 ## Project Structure
 
@@ -55,4 +62,8 @@ Generated artifacts are written to `release/` and are intentionally ignored by g
 
 ## Notes
 
-`release/`, `out/`, `out-test/`, `.superpowers/`, and local credentials/config are not committed. Local app configuration is stored under `~/.smb-mounter/`.
+`release/`, `out/`, `out-test/`, `.superpowers/`, and local credentials/config are not committed. Local app configuration is stored under `~/.smb-mounter/`; its configuration and diagnostic log files are restricted to the current user.
+
+## License
+
+This project is available under the [MIT License](LICENSE).
