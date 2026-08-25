@@ -2,6 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createRequire } from 'node:module'
 import { EventEmitter } from 'node:events'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 
 const require = createRequire(import.meta.url)
 const {
@@ -71,8 +75,8 @@ test('sends the SMB password through a pseudo-terminal instead of process argume
   const input = []
 
   try {
-    childProcess.spawn = (command, args) => {
-      calls.push({ command, args })
+    childProcess.spawn = (command, args, options) => {
+      calls.push({ command, args, options })
       const proc = new EventEmitter()
       proc.stdout = new EventEmitter()
       proc.stderr = new EventEmitter()
@@ -94,13 +98,59 @@ test('sends the SMB password through a pseudo-terminal instead of process argume
 
     assert.deepEqual(result, { success: true })
     assert.equal(calls.length, 1)
-    assert.equal(calls[0].command, '/usr/bin/script')
-    assert.equal(calls[0].args.includes('/sbin/mount_smbfs'), true)
+    assert.equal(calls[0].command, '/usr/bin/expect')
     assert.equal(calls[0].args.some(arg => arg.includes('super-secret')), false)
+    assert.equal(Object.values(calls[0].options.env).some(value => value?.includes('super-secret')), false)
     assert.deepEqual(input, ['super-secret\n'])
   } finally {
     childProcess.spawn = originalSpawn
     delete require.cache[require.resolve('../out-test/core/smb.js')]
+  }
+})
+
+test('runs an interactive credential command when Node stdin is a socket', async () => {
+  const password = 'pty-regression-secret'
+  const expectedHash = createHash('sha256').update(password).digest('hex')
+  const command = [
+    'stty -echo',
+    "printf 'Password for test:'",
+    'IFS= read -r value',
+    'stty echo',
+    "printf '\\n'",
+    "actual=$(/usr/bin/printf %s \"$value\" | /usr/bin/shasum -a 256 | /usr/bin/awk '{print $1}')",
+    `if [ "$actual" = "${expectedHash}" ]; then printf 'credential accepted\\n'; exit 0; fi`,
+    "printf 'credential rejected\\n'",
+    'exit 42'
+  ].join('; ')
+  const { runCredentialCommand } = loadSMBFresh()
+
+  const result = await runCredentialCommand('/bin/sh', ['-c', command], password, 3000)
+
+  assert.equal(result.success, true)
+  assert.match(result.output, /credential accepted/)
+  assert.equal(result.output.includes(password), false)
+  assert.equal(result.output.includes('tcgetattr\/ioctl'), false)
+})
+
+test('suggests a writable shared path when the mount directory cannot be created', async () => {
+  const temporaryRoot = mkdtempSync(join(tmpdir(), 'smb-mounter-path-'))
+  const blockingFile = join(temporaryRoot, 'blocking-file')
+  writeFileSync(blockingFile, '')
+
+  try {
+    const { mountSMB } = loadSMBFresh()
+    const result = await mountSMB(
+      'nas.local',
+      '文件',
+      'admin',
+      'secret',
+      join(blockingFile, '文件')
+    )
+
+    assert.equal(result.success, false)
+    assert.match(result.error, /Choose a writable path such as \/Users\/Shared\/SMB\/文件/)
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true })
   }
 })
 

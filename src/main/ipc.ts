@@ -17,6 +17,8 @@ import { detectSystemSMBMounts, DetectedMount } from '../core/detectMounts'
 import { findMountForSelectedPath } from '../core/systemMountMatcher'
 import { setLaunchAtLogin } from './autoLauncher'
 import { diagnosticLog, openDiagnosticLogFile } from '../core/diagnosticLogger'
+import { ensureMountDirectory, normalizeMountPath } from '../core/mountPath'
+import { DEFAULT_MOUNT_PATH } from '../types'
 
 function normalizeCheckInterval(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -31,12 +33,38 @@ function normalizeDefaultMountPath(value: unknown): string | null {
     return null
   }
 
-  const mountPath = normalize(value.trim())
+  const mountPath = normalizeMountPath(value)
   if (!isAbsolute(mountPath) || mountPath === '/') {
     return null
   }
 
   return mountPath
+}
+
+function tryEnsureMountDirectory(mountPath: string | null): string | null {
+  if (!mountPath) {
+    return null
+  }
+
+  try {
+    return ensureMountDirectory(mountPath)
+  } catch {
+    return null
+  }
+}
+
+function getDirectoryPickerPath(initialPath: unknown): string {
+  const requestedPath = normalizeDefaultMountPath(initialPath)
+  const requestedDirectory = tryEnsureMountDirectory(requestedPath)
+  if (requestedDirectory) {
+    return requestedDirectory
+  }
+
+  const configuredPath = normalizeDefaultMountPath(getSettings().defaultMountPath)
+  const configuredDirectory = requestedPath === configuredPath
+    ? null
+    : tryEnsureMountDirectory(configuredPath)
+  return configuredDirectory ?? ensureMountDirectory(DEFAULT_MOUNT_PATH)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -191,8 +219,10 @@ export function setupIPC(mainWindow: BrowserWindow): void {
     })
   })
 
-  ipcMain.handle('select-directory', async () => {
+  ipcMain.handle('select-directory', async (_, initialPath: unknown) => {
+    const defaultPath = getDirectoryPickerPath(initialPath)
     const result = await dialog.showOpenDialog(mainWindow, {
+      defaultPath,
       properties: ['openDirectory', 'createDirectory']
     })
 

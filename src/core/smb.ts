@@ -1,18 +1,49 @@
 // src/core/smb.ts
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync } from 'fs'
 import { MountIdentity, isSameMountIdentity } from './mountIdentity'
 import { diagnosticLog, DiagnosticLogLevel } from './diagnosticLogger'
+import { ensureMountDirectory, getRecommendedMountPath, normalizeMountPath } from './mountPath'
 
 const execFileAsync = promisify(execFile)
 const SYSTEM_SMB_AUTOMOUNT_ROOT = '/System/Volumes/Data/mnt/SMB'
-const SCRIPT_PATH = '/usr/bin/script'
+const EXPECT_PATH = '/usr/bin/expect'
 const MOUNT_SMBFS_PATH = '/sbin/mount_smbfs'
 const UMOUNT_PATH = '/sbin/umount'
 const DEFAULT_COMMAND_TIMEOUT_MS = 15000
 const STATUS_COMMAND_TIMEOUT_MS = 5000
-const PASSWORD_PROMPT = 'Password for '
+const EXPECT_COMMAND_ENV = 'SMB_MOUNTER_COMMAND'
+const EXPECT_ARG_COUNT_ENV = 'SMB_MOUNTER_ARG_COUNT'
+const EXPECT_ARG_ENV_PREFIX = 'SMB_MOUNTER_ARG_'
+const EXPECT_SCRIPT = `
+log_user 0
+set timeout -1
+set password ""
+set command [list $env(${EXPECT_COMMAND_ENV})]
+set argumentCount $env(${EXPECT_ARG_COUNT_ENV})
+for {set index 0} {$index < $argumentCount} {incr index} {
+  set argumentKey "${EXPECT_ARG_ENV_PREFIX}$index"
+  lappend command $env($argumentKey)
+}
+spawn -noecho {*}$command
+expect {
+  -re {Password for [^\\r\\n]*:} {
+    if {[gets stdin password] < 0} { exit 2 }
+    send -- "$password\\r"
+    exp_continue
+  }
+  eof {
+    set output $expect_out(buffer)
+    if {$password ne ""} {
+      set output [string map [list $password "***"] $output]
+    }
+    send_user -- $output
+  }
+}
+set result [wait]
+exit [lindex $result 3]
+`
 
 export interface MountResult {
   success: boolean
@@ -113,6 +144,18 @@ export interface SMBCommandOptions {
   timeoutMs?: number
 }
 
+function createCredentialEnvironment(command: string, args: string[]): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {
+    ...process.env,
+    [EXPECT_COMMAND_ENV]: command,
+    [EXPECT_ARG_COUNT_ENV]: String(args.length)
+  }
+  args.forEach((arg, index) => {
+    environment[`${EXPECT_ARG_ENV_PREFIX}${index}`] = arg
+  })
+  return environment
+}
+
 function runManagedCommand(
   command: string,
   args: string[],
@@ -121,13 +164,13 @@ function runManagedCommand(
   return new Promise((resolve) => {
     const password = options.password ?? ''
     const timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS
-    const executable = password ? SCRIPT_PATH : command
-    const processArgs = password ? ['-q', '/dev/null', command, ...args] : args
+    const executable = password ? EXPECT_PATH : command
+    const processArgs = password ? ['-N', '-n', '-c', EXPECT_SCRIPT] : args
     const proc = spawn(executable, processArgs, {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: password ? createCredentialEnvironment(command, args) : undefined
     })
     let output = ''
-    let passwordSent = false
     let settled = false
 
     const finish = (result: MountResult): void => {
@@ -138,11 +181,6 @@ function runManagedCommand(
     }
     const collectOutput = (data: Buffer | string): void => {
       output += data.toString()
-      if (password && !passwordSent && output.includes(PASSWORD_PROMPT)) {
-        passwordSent = true
-        proc.stdin?.write(`${password}\n`)
-        proc.stdin?.end()
-      }
     }
     const timeoutId = setTimeout(() => {
       proc.kill()
@@ -151,6 +189,10 @@ function runManagedCommand(
 
     proc.stdout?.on('data', collectOutput)
     proc.stderr?.on('data', collectOutput)
+    if (password) {
+      proc.stdin?.write(`${password}\n`)
+      proc.stdin?.end()
+    }
     proc.on('close', (code) => {
       if (code === 0) {
         finish({ success: true })
@@ -279,17 +321,21 @@ export async function mountSMB(
   password: string,
   mountPath: string
 ): Promise<MountResult> {
-  // Ensure mount directory exists
-  if (!existsSync(mountPath)) {
+  const normalizedMountPath = normalizeMountPath(mountPath)
+  if (!existsSync(normalizedMountPath)) {
     try {
-      mkdirSync(mountPath, { recursive: true })
+      ensureMountDirectory(normalizedMountPath)
     } catch (err: any) {
-      return { success: false, error: `Failed to create mount directory: ${err.message}` }
+      const recommendedPath = getRecommendedMountPath(normalizedMountPath)
+      return {
+        success: false,
+        error: `Failed to create mount directory: ${err.message}. Choose a writable path such as ${recommendedPath}`
+      }
     }
   }
 
   const smbUrl = `//${encodeURIComponent(username)}@${server}/${encodeURIComponent(shareName)}`
-  return toMountResult(await runCredentialCommand(MOUNT_SMBFS_PATH, [smbUrl, mountPath], password))
+  return toMountResult(await runCredentialCommand(MOUNT_SMBFS_PATH, [smbUrl, normalizedMountPath], password))
 }
 
 export async function unmountSMB(

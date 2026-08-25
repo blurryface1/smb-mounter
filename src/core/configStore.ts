@@ -1,10 +1,11 @@
 // src/core/configStore.ts
 import { app } from 'electron'
-import { isAbsolute, normalize } from 'path'
+import { isAbsolute } from 'path'
 import { join } from 'path'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { StoredMountConfig, AppConfig, AppSettings, DEFAULT_SETTINGS } from '../types'
 import { encrypt, decrypt } from './crypto'
+import { normalizeMountPath } from './mountPath'
 
 const CONFIG_DIR = join(app.getPath('home'), '.smb-mounter')
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json')
@@ -42,7 +43,7 @@ function requireShareName(value: unknown): string {
 }
 
 function requireMountPath(value: unknown): string {
-  const mountPath = normalize(requireNonEmptyString(value, 'Mount path'))
+  const mountPath = normalizeMountPath(requireNonEmptyString(value, 'Mount path'))
   if (!isAbsolute(mountPath) || mountPath === '/') {
     throw new Error('Mount path must be an absolute path below a mount directory')
   }
@@ -128,11 +129,24 @@ function loadRawConfig(): AppConfig {
     const data = readFileSync(CONFIG_FILE, 'utf-8')
     const parsed = JSON.parse(data) as Partial<AppConfig>
 
+    const mounts = Array.isArray(parsed.mounts)
+      ? parsed.mounts.map(mount => ({
+          ...mount,
+          mountPath: typeof mount.mountPath === 'string'
+            ? normalizeMountPath(mount.mountPath)
+            : mount.mountPath
+        }))
+      : []
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      ...(parsed.settings ?? {})
+    }
+
     return {
-      mounts: Array.isArray(parsed.mounts) ? parsed.mounts : [],
+      mounts,
       settings: {
-        ...DEFAULT_SETTINGS,
-        ...(parsed.settings ?? {})
+        ...settings,
+        defaultMountPath: normalizeMountPath(settings.defaultMountPath)
       }
     }
   } catch {

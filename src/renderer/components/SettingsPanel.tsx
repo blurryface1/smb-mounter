@@ -1,5 +1,6 @@
 import { AppSettings } from '../hooks/useConfig'
 import { Locale, useI18n } from '../i18n'
+import { DEFAULT_MOUNT_PATH } from '../../types'
 
 interface SettingsPanelProps {
   settings?: AppSettings | null
@@ -23,6 +24,14 @@ export default function SettingsPanel({
     const result = await window.api.openDiagnosticLogFile()
     if (!result.success && result.error) {
       console.error(t.errors.openDiagnosticLogFailed, result.error)
+    }
+  }
+
+  const handleChooseDefaultMountPath = async () => {
+    const initialPath = settings?.defaultMountPath || DEFAULT_MOUNT_PATH
+    const selectedPath = await window.api.selectDirectory(initialPath)
+    if (selectedPath) {
+      await onUpdateSettings({ defaultMountPath: selectedPath })
     }
   }
 
@@ -74,12 +83,21 @@ export default function SettingsPanel({
             <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
               {t.settingsPage.defaultMountPath}
             </label>
-            <input
-              type="text"
-              value={settings?.defaultMountPath || '/Users/Shared/SMB'}
-              onChange={(event) => void onUpdateSettings({ defaultMountPath: event.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={settings?.defaultMountPath || DEFAULT_MOUNT_PATH}
+                onChange={(event) => void onUpdateSettings({ defaultMountPath: event.target.value })}
+                className="min-w-0 flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+              />
+              <button
+                type="button"
+                onClick={() => void handleChooseDefaultMountPath()}
+                className="shrink-0 px-3 py-2 text-sm text-gray-700 border border-gray-300 hover:bg-gray-100 rounded-md transition-colors dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800"
+              >
+                {t.form.chooseMountPath}
+              </button>
+            </div>
           </div>
 
           <div className="p-4 space-y-2">

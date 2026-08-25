@@ -4,6 +4,7 @@ import { useConfig } from '../hooks/useConfig'
 import { useI18n } from '../i18n'
 import { buildDiscoveredShareOption, getGeneratedMountPath } from '../ui/shareDiscoveryPresentation'
 import { getMountDefaultName } from '../ui/mountPresentation'
+import { DEFAULT_MOUNT_PATH } from '../../types'
 
 interface MountFormProps {
   mount?: MountConfig | null
@@ -98,7 +99,7 @@ export default function MountForm({ mount, mounts, onSave, onCancel }: MountForm
     } else {
       setFormData({
         ...emptyForm,
-        mountPath: settings?.defaultMountPath || '/Users/Shared/SMB'
+        mountPath: settings?.defaultMountPath || DEFAULT_MOUNT_PATH
       })
       setMode('browse')
       setSelectedServer('')
@@ -140,7 +141,8 @@ export default function MountForm({ mount, mounts, onSave, onCancel }: MountForm
     setError(null)
 
     try {
-      const selectedPath = await window.api.selectDirectory()
+      const initialPath = formData.mountPath || settings?.defaultMountPath || DEFAULT_MOUNT_PATH
+      const selectedPath = await window.api.selectDirectory(initialPath)
       if (!selectedPath) {
         return
       }
@@ -217,7 +219,7 @@ export default function MountForm({ mount, mounts, onSave, onCancel }: MountForm
   }
 
   const handleSelectShare = (share: DiscoveredSMBShare) => {
-    const defaultMountPath = settings?.defaultMountPath || '/Users/Shared/SMB'
+    const defaultMountPath = settings?.defaultMountPath || DEFAULT_MOUNT_PATH
     const defaultName = getMountDefaultName(selectedServer, share.shareName, mounts)
     setFormData(prev => ({
       ...prev,
@@ -326,7 +328,7 @@ export default function MountForm({ mount, mounts, onSave, onCancel }: MountForm
                       name: '',
                       server: '',
                       shareName: '',
-                      mountPath: settings?.defaultMountPath || '/Users/Shared/SMB'
+                      mountPath: settings?.defaultMountPath || DEFAULT_MOUNT_PATH
                     }))
                   }}
                   className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
@@ -443,13 +445,22 @@ export default function MountForm({ mount, mounts, onSave, onCancel }: MountForm
                     <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-200">
                       {t.form.localMountPoint}
                     </label>
-                    <input
-                      type="text"
-                      name="mountPath"
-                      value={formData.mountPath}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        name="mountPath"
+                        value={formData.mountPath}
+                        onChange={handleChange}
+                        className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleChooseDirectory}
+                        className="shrink-0 px-3 py-2 text-sm text-gray-700 border border-gray-300 hover:bg-gray-100 rounded-md transition-colors dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-800"
+                      >
+                        {t.form.chooseMountPath}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

@@ -48,3 +48,46 @@ test('restricts existing config directory and file permissions', () => {
     rmSync(homePath, { recursive: true, force: true })
   }
 })
+
+test('corrects the common /User/Shared mount path typo when loading and saving', () => {
+  const homePath = mkdtempSync(join(tmpdir(), 'smb-mounter-config-'))
+  const configDir = join(homePath, '.smb-mounter')
+  const configFile = join(configDir, 'config.json')
+  const storedMount = {
+    id: 'mount-1',
+    name: '文件',
+    server: 'nas.local',
+    shareName: '文件',
+    username: 'admin',
+    mountPath: '/User/Shared/SMB/文件',
+    autoMount: false,
+    autoRetry: false,
+    retryInterval: 30,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  try {
+    mkdirSync(configDir)
+    writeFileSync(configFile, JSON.stringify({
+      mounts: [storedMount],
+      settings: { defaultMountPath: '/User/Shared/SMB' }
+    }))
+    const configStore = loadConfigStore(homePath)
+
+    const loaded = configStore.loadConfig()
+    const added = configStore.addMount({
+      ...storedMount,
+      id: undefined,
+      createdAt: undefined,
+      updatedAt: undefined,
+      password: 'secret'
+    })
+
+    assert.equal(loaded.mounts[0].mountPath, '/Users/Shared/SMB/文件')
+    assert.equal(loaded.settings.defaultMountPath, '/Users/Shared/SMB')
+    assert.equal(added.mountPath, '/Users/Shared/SMB/文件')
+  } finally {
+    rmSync(homePath, { recursive: true, force: true })
+  }
+})

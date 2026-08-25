@@ -327,16 +327,15 @@ test('lists SMB shares with native smbutil when view is not injected', async () 
     childProcess.execFile = (command) => {
       assert.notEqual(command, 'smbutil')
     }
-    childProcess.spawn = (command, args) => {
-      assert.equal(command, '/usr/bin/script')
-      assert.deepEqual(args, [
-        '-q',
-        '/dev/null',
-        '/usr/bin/smbutil',
-        'view',
-        '//admin@FNNAS.local'
-      ])
+    childProcess.spawn = (command, args, options) => {
+      assert.equal(command, '/usr/bin/expect')
       assert.equal(args.some(arg => arg.includes('secret')), false)
+      const credentialEnvironment = Object.entries(options.env)
+        .filter(([key]) => key.startsWith('SMB_MOUNTER_'))
+        .map(([, value]) => value)
+      assert.equal(credentialEnvironment.some(value => value?.includes('secret')), false)
+      assert.equal(credentialEnvironment.includes('/usr/bin/smbutil'), true)
+      assert.equal(credentialEnvironment.includes('//admin@FNNAS.local'), true)
 
       const proc = new EventEmitter()
       proc.stdout = new EventEmitter()

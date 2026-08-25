@@ -9,7 +9,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc -b",
-    "test": "tsc src/core/*.ts src/main/dockVisibility.ts src/main/tray.ts src/renderer/ui/mountPresentation.ts src/renderer/ui/shareDiscoveryPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test --test-isolation=none --test-concurrency=1 test/*.test.mjs",
+    "test": "tsc src/core/*.ts src/main/dockVisibility.ts src/main/ipc.ts src/main/tray.ts src/renderer/ui/mountPresentation.ts src/renderer/ui/shareDiscoveryPresentation.ts --target ES2020 --module commonjs --rootDir src --outDir out-test --strict --skipLibCheck --jsx react-jsx && node --test --test-isolation=none --test-concurrency=1 test/*.test.mjs",
     "audit": "npm audit --audit-level=high",
     "preview": "electron-vite preview",
     "pack": "npm run build && electron-builder --dir",

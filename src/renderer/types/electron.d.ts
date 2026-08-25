@@ -55,7 +55,7 @@ declare global {
       refreshStatus: (id: string) => Promise<MountStatus | null>
       refreshAllStatuses: () => Promise<MountStatus[]>
       detectSystemMounts: () => Promise<SystemMount[]>
-      selectDirectory: () => Promise<string | null>
+      selectDirectory: (initialPath?: string) => Promise<string | null>
       resolveSystemMountForPath: (selectedPath: string) => Promise<SystemMount | null>
       openPathInFinder: (mountPath: string) => Promise<MountOperationResult>
       openDiagnosticLogFile: () => Promise<MountOperationResult>

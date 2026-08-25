@@ -40,10 +40,12 @@ export interface AppSettings {
   theme: 'system' | 'light' | 'dark'
 }
 
+export const DEFAULT_MOUNT_PATH = '/Users/Shared/SMB'
+
 export const DEFAULT_SETTINGS: AppSettings = {
   launchAtLogin: false,
   showNotifications: true,
-  defaultMountPath: '/Users/Shared/SMB',
+  defaultMountPath: DEFAULT_MOUNT_PATH,
   checkInterval: 30,
   diagnosticMode: false,
   theme: 'system'
