@@ -8,17 +8,17 @@ class ConnectionMonitor {
   private checking = false
   private lastRetryAt: Map<string, number> = new Map()
 
-  start(): void {
+  async start(): Promise<void> {
     if (this.intervalId) return
 
     const checkInterval = getSettings().checkInterval * 1000
 
     this.intervalId = setInterval(() => {
-      this.checkAllMounts()
+      void this.checkAllMounts()
     }, checkInterval)
 
-    // Initial check
-    this.checkAllMounts()
+    await this.checkAndRemount()
+    await this.checkAllMounts()
   }
 
   stop(): void {
@@ -28,9 +28,9 @@ class ConnectionMonitor {
     }
   }
 
-  restart(): void {
+  async restart(): Promise<void> {
     this.stop()
-    this.start()
+    await this.start()
   }
 
   private async checkAllMounts(): Promise<void> {
@@ -40,10 +40,14 @@ class ConnectionMonitor {
     const mounts = getMounts()
 
     try {
-      for (const mount of mounts) {
-        const status = await mountManager.refreshStatus(mount)
+      const statuses = new Map(
+        (await mountManager.refreshAllStatuses()).map(status => [status.configId, status])
+      )
 
-        if (status.status === 'disconnected' && mount.autoRetry && this.canRetry(mount.id, mount.retryInterval)) {
+      for (const mount of mounts) {
+        const status = statuses.get(mount.id)
+
+        if (status?.status === 'disconnected' && mount.autoRetry && this.canRetry(mount.id, mount.retryInterval)) {
           console.log(`Auto-retrying mount: ${mount.name}`)
           await diagnosticLog('info', 'mount.retry.start', {
             mountId: mount.id,
@@ -68,11 +72,14 @@ class ConnectionMonitor {
 
   async checkAndRemount(): Promise<void> {
     const mounts = getMounts()
+    const statuses = new Map(
+      (await mountManager.refreshAllStatuses()).map(status => [status.configId, status])
+    )
 
     for (const mount of mounts) {
       if (mount.autoMount) {
-        const status = await mountManager.refreshStatus(mount)
-        if (status.status === 'disconnected') {
+        const status = statuses.get(mount.id)
+        if (status?.status === 'disconnected') {
           await diagnosticLog('info', 'mount.start', {
             mountId: mount.id,
             mountName: mount.name,

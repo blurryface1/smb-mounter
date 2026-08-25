@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
+import { runCredentialCommand } from './smb'
 
 export interface DiscoveredSMBServer {
   name: string
@@ -130,19 +131,19 @@ async function runNativeResolve(serviceName: string, timeoutMs: number): Promise
 }
 
 async function runNativeShareList(request: SMBSharesRequest, timeoutMs: number): Promise<string> {
-  const target = `//${encodeURIComponent(request.username)}:${encodeURIComponent(request.password)}@${request.server}`
-  let stdout = ''
+  const target = `//${encodeURIComponent(request.username)}@${request.server}`
+  const result = await runCredentialCommand(
+    '/usr/bin/smbutil',
+    ['view', target],
+    request.password,
+    timeoutMs
+  )
 
-  try {
-    const result = await execFileAsync('smbutil', ['view', '-N', target], {
-      timeout: timeoutMs
-    })
-    stdout = result.stdout
-  } catch {
+  if (!result.success) {
     throw new Error('Failed to list SMB shares')
   }
 
-  return stdout
+  return result.output
 }
 
 function parseBrowseLine(line: string): DiscoveredSMBServer | null {
@@ -213,12 +214,15 @@ export async function discoverSMBServers(options: SMBServerDiscoveryOptions = {}
   for (const line of output.split('\n')) {
     const server = parseBrowseLine(line)
     if (server && !servers.has(server.serviceName)) {
-      const host = resolve ? await resolve(server.serviceName) : null
-      if (host) {
-        server.host = host
-      }
       servers.set(server.serviceName, server)
     }
+  }
+
+  if (resolve) {
+    await Promise.all(Array.from(servers.values()).map(async server => {
+      const host = await resolve(server.serviceName)
+      if (host) server.host = host
+    }))
   }
 
   return Array.from(servers.values())

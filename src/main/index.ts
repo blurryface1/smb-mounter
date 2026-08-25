@@ -63,20 +63,17 @@ if (!gotSingleInstanceLock) {
     showMainWindow()
   })
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     configureDocklessMenuBarMode(app)
 
     mainWindow = createMainWindow()
     mountManager.setMainWindow(mainWindow)
 
-    setupTray(mainWindow)
+    setupTray(mainWindow, mountManager)
     setupIPC(mainWindow)
     setupAutoLauncher()
 
-    connectionMonitor.start()
-
-    // Initial status refresh
-    mountManager.refreshAllStatuses()
+    await connectionMonitor.start()
   })
 
   app.on('activate', () => {

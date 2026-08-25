@@ -31,8 +31,8 @@ macOS can mount SMB shares natively, but managing multiple shares across differe
 - 🖥️ **Menu bar app** — compact tray icon with live mount status, right-click to manage
 - ➕ **Add / Edit / Delete** — save your SMB shares with custom names and mount paths
 - 📥 **Import existing mounts** — auto-detect currently mounted SMB shares and import them in one click
-- 🔄 **Auto-retry** — automatically re-mount disconnected shares at a configurable interval
-- 🔐 **Encrypted credentials** — passwords are encrypted via [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage) (OS keychain) with AES-256-GCM fallback
+- 🔄 **Auto-mount / Auto-retry** — mount selected shares at startup and retry disconnected shares at a configurable interval
+- 🔐 **Protected credentials** — new passwords use [Electron safeStorage](https://www.electronjs.org/docs/latest/api/safe-storage), while legacy AES-256-GCM entries remain readable for migration
 - 📂 **Open in Finder** — one click to reveal a mounted share in Finder
 - 🔍 **Share discovery** — browse SMB servers on your local network and pick shares to mount
 - 🚀 **Launch at login** — optionally start automatically when you log in
@@ -71,7 +71,7 @@ SMB Mounter lives in your menu bar. Open settings, refresh all mounts, or quit f
 
 Download the latest `.dmg` from the [Releases](https://github.com/blurryface1/smb-mounter/releases) page.
 
-> The app is currently ad-hoc signed. On first launch, right-click the app in Finder and select **Open** to bypass Gatekeeper.
+> Local builds remain unsigned when no Developer ID identity is available. On first launch, right-click the app in Finder and select **Open** to bypass Gatekeeper.
 
 ### Build from source
 
@@ -79,7 +79,7 @@ Download the latest `.dmg` from the [Releases](https://github.com/blurryface1/sm
 git clone https://github.com/blurryface1/smb-mounter.git
 cd smb-mounter
 npm install
-npm run dist
+npm run dist:universal
 ```
 
 The `.dmg` and `.zip` artifacts will be written to `release/`.
@@ -119,11 +119,14 @@ npm run typecheck
 
 # Build for production
 npm run build
+
+# Audit dependencies
+npm run audit
 ```
 
 ### Project Structure
 
-```
+```text
 src/
 ├── main/          # Electron main process, tray, IPC, startup
 ├── preload/       # Secure context bridge
@@ -133,7 +136,7 @@ src/
 │   ├── hooks/       # useMounts, useConfig
 │   └── i18n/        # Chinese & English locale strings
 └── types/         # Shared TypeScript types
-assets/            # Tray icons
+assets/            # Tray icons and screenshots
 build/             # macOS entitlements, icon.icns
 test/              # Node test runner suites
 ```
@@ -149,8 +152,8 @@ test/              # Node test runner suites
 | Language | TypeScript |
 | Build | electron-vite + electron-builder |
 | Testing | Node test runner |
-| Storage | electron-store, ~/.smb-mounter/ |
-| Encryption | Electron safeStorage / AES-256-GCM |
+| Storage | JSON configuration under `~/.smb-mounter/` |
+| Encryption | Electron safeStorage with legacy AES-256-GCM read compatibility |
 
 ---
 
@@ -160,13 +163,15 @@ test/              # Node test runner suites
 Finder remembers recent servers but doesn't save credentials, can't auto-retry dropped mounts, and gives you no central view of all your shares.
 
 **Q: Where are my credentials stored?**
-In `~/.smb-mounter/config.json`, encrypted with the OS credential store (Keychain on macOS). If safeStorage is unavailable, falls back to AES-256-GCM with a machine-bound key.
+In `~/.smb-mounter/config.json`, protected with the OS credential store (Keychain on macOS). If safeStorage is unavailable, new credentials are not saved. Existing legacy AES-256-GCM entries remain readable for migration.
 
 **Q: Does it work over VPN?**
 Yes — if your SMB server is reachable, SMB Mounter can mount it. Enable auto-retry for shares that may drop when the VPN reconnects.
+
+Configuration and diagnostic log files are restricted to the current user. `release/`, `out/`, and `out-test/` are not committed.
 
 ---
 
 ## License
 
-MIT
+This project is available under the [MIT License](LICENSE).

@@ -80,7 +80,9 @@ export const zh = {
     chooseMountedShare: '选择已挂载共享',
     chooseMountPath: '选择路径',
     chooseMountedShareHint: '从系统中已挂载的 SMB 共享自动填充服务器、共享名称和路径。',
-    chooseMountPathHint: '选择这个共享在本机使用的挂载路径。'
+    chooseMountPathHint: '选择这个共享在本机使用的挂载路径。',
+    sharePrefix: '共享',
+    localMountPrefix: '本机'
   },
 
   // 列表
@@ -215,7 +217,9 @@ export const en = {
     chooseMountedShare: 'Choose Mounted Share',
     chooseMountPath: 'Choose Path',
     chooseMountedShareHint: 'Fill server, share name, and path from an SMB share already mounted by the system.',
-    chooseMountPathHint: 'Choose the local path this share should use when mounted.'
+    chooseMountPathHint: 'Choose the local path this share should use when mounted.',
+    sharePrefix: 'Share',
+    localMountPrefix: 'Local'
   },
 
   // List

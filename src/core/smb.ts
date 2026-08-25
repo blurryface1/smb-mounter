@@ -7,10 +7,20 @@ import { diagnosticLog, DiagnosticLogLevel } from './diagnosticLogger'
 
 const execFileAsync = promisify(execFile)
 const SYSTEM_SMB_AUTOMOUNT_ROOT = '/System/Volumes/Data/mnt/SMB'
+const SCRIPT_PATH = '/usr/bin/script'
+const MOUNT_SMBFS_PATH = '/sbin/mount_smbfs'
+const UMOUNT_PATH = '/sbin/umount'
+const DEFAULT_COMMAND_TIMEOUT_MS = 15000
+const STATUS_COMMAND_TIMEOUT_MS = 5000
+const PASSWORD_PROMPT = 'Password for '
 
 export interface MountResult {
   success: boolean
   error?: string
+}
+
+export interface NativeCommandResult extends MountResult {
+  output: string
 }
 
 export interface MountedSMBShare extends MountIdentity {
@@ -87,6 +97,87 @@ export function safeDecodeURIComponent(value: string): string {
 
 function redactSMBUrlPassword(message: string): string {
   return message.replace(/\/\/([^:@/\s]+):([^@/\s]+)@/g, '//$1:***@')
+}
+
+function redactCredential(message: string, password: string): string {
+  const redactedUrl = redactSMBUrlPassword(message)
+  return password ? redactedUrl.split(password).join('***') : redactedUrl
+}
+
+interface ManagedCommandOptions {
+  password?: string
+  timeoutMs?: number
+}
+
+export interface SMBCommandOptions {
+  timeoutMs?: number
+}
+
+function runManagedCommand(
+  command: string,
+  args: string[],
+  options: ManagedCommandOptions = {}
+): Promise<NativeCommandResult> {
+  return new Promise((resolve) => {
+    const password = options.password ?? ''
+    const timeoutMs = options.timeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS
+    const executable = password ? SCRIPT_PATH : command
+    const processArgs = password ? ['-q', '/dev/null', command, ...args] : args
+    const proc = spawn(executable, processArgs, {
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    let output = ''
+    let passwordSent = false
+    let settled = false
+
+    const finish = (result: MountResult): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeoutId)
+      resolve({ ...result, output })
+    }
+    const collectOutput = (data: Buffer | string): void => {
+      output += data.toString()
+      if (password && !passwordSent && output.includes(PASSWORD_PROMPT)) {
+        passwordSent = true
+        proc.stdin?.write(`${password}\n`)
+        proc.stdin?.end()
+      }
+    }
+    const timeoutId = setTimeout(() => {
+      proc.kill()
+      finish({ success: false, error: `Command timed out after ${timeoutMs} ms` })
+    }, timeoutMs)
+
+    proc.stdout?.on('data', collectOutput)
+    proc.stderr?.on('data', collectOutput)
+    proc.on('close', (code) => {
+      if (code === 0) {
+        finish({ success: true })
+        return
+      }
+      const error = output.trim() || `${command} exited with code ${code}`
+      finish({ success: false, error: redactCredential(error, password) })
+    })
+    proc.on('error', (error) => {
+      finish({ success: false, error: redactCredential(error.message, password) })
+    })
+  })
+}
+
+export function runCredentialCommand(
+  command: string,
+  args: string[],
+  password: string,
+  timeoutMs = DEFAULT_COMMAND_TIMEOUT_MS
+): Promise<NativeCommandResult> {
+  return runManagedCommand(command, args, { password, timeoutMs })
+}
+
+function toMountResult(result: NativeCommandResult): MountResult {
+  return result.success
+    ? { success: true }
+    : { success: false, error: result.error }
 }
 
 export function isSystemAutomountPath(mountPath: string): boolean {
@@ -172,15 +263,6 @@ export function parseSMBMountLine(line: string): (MountedSMBShare & { path: stri
   }
 }
 
-export async function checkServerReachable(server: string): Promise<boolean> {
-  try {
-    await runCommand('ping', ['-c', '1', '-W', '2', server])
-    return true
-  } catch {
-    return false
-  }
-}
-
 export async function flushDNS(): Promise<void> {
   try {
     await runCommand('dscacheutil', ['-flushcache'])
@@ -206,66 +288,20 @@ export async function mountSMB(
     }
   }
 
-  return new Promise((resolve) => {
-    const smbUrl = `//${encodeURIComponent(username)}:${encodeURIComponent(password)}@${server}/${encodeURIComponent(shareName)}`
-
-    const proc = spawn('mount_smbfs', [smbUrl, mountPath], {
-      stdio: ['ignore', 'pipe', 'pipe']
-    })
-
-    let stderr = ''
-    proc.stderr?.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve({ success: true })
-      } else {
-        resolve({
-          success: false,
-          error: redactSMBUrlPassword(stderr || `mount_smbfs exited with code ${code}`)
-        })
-      }
-    })
-
-    proc.on('error', (err) => {
-      resolve({ success: false, error: redactSMBUrlPassword(err.message) })
-    })
-  })
+  const smbUrl = `//${encodeURIComponent(username)}@${server}/${encodeURIComponent(shareName)}`
+  return toMountResult(await runCredentialCommand(MOUNT_SMBFS_PATH, [smbUrl, mountPath], password))
 }
 
-export async function unmountSMB(mountPath: string): Promise<MountResult> {
-  return new Promise((resolve) => {
-    const proc = spawn('umount', [mountPath], {
-      stdio: ['ignore', 'pipe', 'pipe']
-    })
-
-    let stderr = ''
-    proc.stderr?.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve({ success: true })
-      } else {
-        resolve({
-          success: false,
-          error: stderr || `umount exited with code ${code}`
-        })
-      }
-    })
-
-    proc.on('error', (err) => {
-      resolve({ success: false, error: err.message })
-    })
-  })
+export async function unmountSMB(
+  mountPath: string,
+  options: SMBCommandOptions = {}
+): Promise<MountResult> {
+  return toMountResult(await runManagedCommand(UMOUNT_PATH, [mountPath], options))
 }
 
 export async function getMountedShares(): Promise<Map<string, string>> {
   try {
-    const { stdout } = await execFileAsync('mount', [])
+    const { stdout } = await execFileAsync('mount', [], { timeout: STATUS_COMMAND_TIMEOUT_MS })
     const mounts = new Map<string, string>()
 
     stdout.trim().split('\n').filter(line => line.includes('(smbfs')).forEach(line => {
@@ -283,7 +319,7 @@ export async function getMountedShares(): Promise<Map<string, string>> {
 
 export async function getMountedSMBShares(): Promise<MountedSMBShare[]> {
   try {
-    const { stdout } = await execFileAsync('mount', [])
+    const { stdout } = await execFileAsync('mount', [], { timeout: STATUS_COMMAND_TIMEOUT_MS })
 
     return stdout.trim().split('\n').filter(line => line.includes('(smbfs')).flatMap(line => {
       const parsed = parseSMBMountLine(line)

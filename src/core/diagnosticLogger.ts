@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs'
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -21,6 +21,8 @@ const LOG_DIR_NAME = 'logs'
 const LOG_FILE_NAME = 'app.log'
 const ROTATED_LOG_FILE_NAME = 'app.log.1'
 const CONFIG_FILE_NAME = 'config.json'
+const LOG_DIR_MODE = 0o700
+const LOG_FILE_MODE = 0o600
 const OMITTED_SENSITIVE_KEYS = new Set(['password', 'encryptedpassword'])
 
 function getDefaultBaseDir(): string {
@@ -60,8 +62,9 @@ function isDiagnosticModeEnabled(baseDir: string): boolean {
 function ensureLogDir(baseDir: string): void {
   const logDir = getLogDir(baseDir)
   if (!existsSync(logDir)) {
-    mkdirSync(logDir, { recursive: true })
+    mkdirSync(logDir, { recursive: true, mode: LOG_DIR_MODE })
   }
+  chmodSync(logDir, LOG_DIR_MODE)
 }
 
 function rotateIfNeeded(baseDir: string, maxBytes: number): void {
@@ -75,6 +78,7 @@ function rotateIfNeeded(baseDir: string, maxBytes: number): void {
     rmSync(rotatedLogFile)
   }
   renameSync(logFile, rotatedLogFile)
+  chmodSync(rotatedLogFile, LOG_FILE_MODE)
 }
 
 function looksLikeCredentialUrl(value: string): boolean {
@@ -137,8 +141,9 @@ export function createDiagnosticLogger(options: DiagnosticLoggerOptions): Diagno
       ensureLogDir(baseDir)
       const logFile = getLogFile(baseDir)
       if (!existsSync(logFile)) {
-        writeFileSync(logFile, '')
+        writeFileSync(logFile, '', { mode: LOG_FILE_MODE })
       }
+      chmodSync(logFile, LOG_FILE_MODE)
       return logFile
     },
     log: async (level, event, metadata = {}) => {
@@ -155,7 +160,12 @@ export function createDiagnosticLogger(options: DiagnosticLoggerOptions): Diagno
           event,
           ...redactRecord(metadata)
         }
-        appendFileSync(getLogFile(baseDir), `${JSON.stringify(entry)}\n`, 'utf-8')
+        const logFile = getLogFile(baseDir)
+        appendFileSync(logFile, `${JSON.stringify(entry)}\n`, {
+          encoding: 'utf8',
+          mode: LOG_FILE_MODE
+        })
+        chmodSync(logFile, LOG_FILE_MODE)
       } catch (error) {
         console.error('Failed to write diagnostic log:', error)
       }

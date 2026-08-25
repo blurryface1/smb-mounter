@@ -65,6 +65,96 @@ test('redacts passwords from mount_smbfs failure messages', async () => {
   }
 })
 
+test('sends the SMB password through a pseudo-terminal instead of process arguments', async () => {
+  const originalSpawn = childProcess.spawn
+  const calls = []
+  const input = []
+
+  try {
+    childProcess.spawn = (command, args) => {
+      calls.push({ command, args })
+      const proc = new EventEmitter()
+      proc.stdout = new EventEmitter()
+      proc.stderr = new EventEmitter()
+      proc.stdin = {
+        write(value) {
+          input.push(value)
+        },
+        end() {}
+      }
+      process.nextTick(() => {
+        proc.stdout.emit('data', 'Password for nas.local:')
+        proc.emit('close', 0)
+      })
+      return proc
+    }
+
+    const { mountSMB } = loadSMBFresh()
+    const result = await mountSMB('nas.local', 'files', 'admin', 'super-secret', '/tmp')
+
+    assert.deepEqual(result, { success: true })
+    assert.equal(calls.length, 1)
+    assert.equal(calls[0].command, '/usr/bin/script')
+    assert.equal(calls[0].args.includes('/sbin/mount_smbfs'), true)
+    assert.equal(calls[0].args.some(arg => arg.includes('super-secret')), false)
+    assert.deepEqual(input, ['super-secret\n'])
+  } finally {
+    childProcess.spawn = originalSpawn
+    delete require.cache[require.resolve('../out-test/core/smb.js')]
+  }
+})
+
+test('terminates an unmount command after its timeout', async () => {
+  const originalSpawn = childProcess.spawn
+  let killed = false
+
+  try {
+    childProcess.spawn = () => {
+      const proc = new EventEmitter()
+      proc.stdout = new EventEmitter()
+      proc.stderr = new EventEmitter()
+      proc.kill = () => {
+        killed = true
+      }
+      setTimeout(() => {
+        if (!killed) proc.emit('close', 0)
+      }, 10)
+      return proc
+    }
+
+    const { unmountSMB } = loadSMBFresh()
+    const result = await unmountSMB('/Volumes/files', { timeoutMs: 1 })
+
+    assert.equal(result.success, false)
+    assert.match(result.error, /timed out after 1 ms/)
+    assert.equal(killed, true)
+  } finally {
+    childProcess.spawn = originalSpawn
+    delete require.cache[require.resolve('../out-test/core/smb.js')]
+  }
+})
+
+test('bounds system mount-table reads with a timeout', async () => {
+  const originalExecFile = childProcess.execFile
+  let receivedOptions
+
+  try {
+    childProcess.execFile = (_command, _args, options, callback) => {
+      receivedOptions = options
+      const done = typeof options === 'function' ? options : callback
+      done(null, { stdout: '', stderr: '' })
+    }
+
+    const { getMountedSMBShares } = loadSMBFresh()
+    await getMountedSMBShares()
+
+    assert.deepEqual(receivedOptions, { timeout: 5000 })
+  } finally {
+    childProcess.execFile = originalExecFile
+    delete require.cache[require.resolve('../out-test/core/smb.js')]
+  }
+})
+
 test('does not open Finder by default when ls does not activate a system SMB automount path', async () => {
   const calls = []
 

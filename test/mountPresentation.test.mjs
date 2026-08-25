@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import {
   getMountSummary,
   getPrimaryMountAction,
-  getMountDetailParts
+  getMountDetailParts,
+  truncatePath,
+  getMountDefaultName
 } from '../out-test/renderer/ui/mountPresentation.js'
 
 const baseMount = {
@@ -51,18 +53,85 @@ test('getPrimaryMountAction mounts disconnected and pending shares', () => {
   assert.equal(getPrimaryMountAction('pending'), 'mount')
 })
 
-test('getMountDetailParts includes share target and automation labels', () => {
+test('getMountDetailParts includes share target and automation labels with i18n prefixes', () => {
   assert.deepEqual(
     getMountDetailParts({
       ...baseMount,
       autoMount: true,
       autoRetry: true
+    }, {
+      autoMount: 'Auto-mount',
+      autoRetry: 'Auto-retry',
+      sharePrefix: '共享',
+      localMountPrefix: '本机'
     }),
     [
-      'FNNAS.local/UNRAID',
-      '/Users/Shared/SMB/UNRAID',
+      '共享 FNNAS.local/UNRAID',
+      '本机 /Users/Shared/SMB/UNRAID',
       'Auto-mount',
       'Auto-retry'
     ]
   )
+  // Long paths are truncated automatically
+  assert.deepEqual(
+    getMountDetailParts({
+      ...baseMount,
+      mountPath: '/Users/Shared/SMB/Projects/2026/Archive/Alpha'
+    }, {
+      autoMount: 'Auto-mount',
+      autoRetry: 'Auto-retry',
+      sharePrefix: '共享',
+      localMountPrefix: '本机'
+    }),
+    [
+      '共享 FNNAS.local/UNRAID',
+      '本机 /Users/Shared/.../Archive/Alpha'
+    ]
+  )
+  // No labels provided: use default english labels
+  assert.deepEqual(
+    getMountDetailParts({
+      ...baseMount,
+      autoMount: true
+    }),
+    [
+      'Share FNNAS.local/UNRAID',
+      'Local /Users/Shared/SMB/UNRAID',
+      'Auto-mount'
+    ]
+  )
+})
+
+test('truncatePath shortens long paths by omitting middle segments', () => {
+  // Short paths stay unchanged
+  assert.equal(truncatePath('/Users/Shared/SMB/UNRAID'), '/Users/Shared/SMB/UNRAID')
+  // Long paths truncate middle, keep first two and last two segments
+  assert.equal(
+    truncatePath('/Users/Shared/SMB/Projects/2026/Project-Archive/Old/Versions/Alpha'),
+    '/Users/Shared/.../Versions/Alpha'
+  )
+  // Path with many segments truncates to keep first two and last two
+  assert.equal(
+    truncatePath('/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p'),
+    '/a/b/.../o/p'
+  )
+  // Path with trailing slash is normalized before truncation
+  assert.equal(truncatePath('/Users/Shared/SMB/UNRAID/'), '/Users/Shared/SMB/UNRAID')
+  // Root path stays unchanged
+  assert.equal(truncatePath('/'), '/')
+})
+
+test('getMountDefaultName generates default share name based on existing mounts', () => {
+  const existingMounts = [
+    { ...baseMount, id: 'share-1', server: 'FNNAS.local', shareName: 'UNRAID' },
+    { ...baseMount, id: 'share-2', server: 'BackupNAS.local', shareName: 'UNRAID' }
+  ]
+  // No existing share with same name: use shareName directly
+  assert.equal(getMountDefaultName('FNNAS.local', 'Photos', existingMounts), 'Photos')
+  // Existing share with same server and name: use existing name
+  assert.equal(getMountDefaultName('FNNAS.local', 'UNRAID', existingMounts), 'UNRAID')
+  // Existing share with same name but different server: use "server · shareName"
+  assert.equal(getMountDefaultName('HomeNAS.local', 'UNRAID', existingMounts), 'HomeNAS · UNRAID')
+  // Multiple existing shares with same name: use "server · shareName"
+  assert.equal(getMountDefaultName('OfficeNAS.local', 'UNRAID', existingMounts), 'OfficeNAS · UNRAID')
 })

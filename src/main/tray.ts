@@ -2,9 +2,16 @@
 import { Tray, Menu, BrowserWindow, nativeImage, app } from 'electron'
 import type { NativeImage } from 'electron'
 import { join } from 'path'
+import type { MountStatus } from '../types'
 
 let tray: Tray | null = null
 const TRAY_ICON_SIZE = 18
+
+interface TrayStatusSource {
+  getAllStatuses: () => MountStatus[]
+  refreshAllStatuses: () => Promise<MountStatus[]>
+  onStatusesChanged: (listener: (statuses: MountStatus[]) => void) => () => void
+}
 
 function getAssetPath(filename: string): string {
   if (app.isPackaged) {
@@ -25,10 +32,26 @@ function createTrayImage(filename: string): NativeImage {
   return resizedIcon
 }
 
-export function setupTray(mainWindow: BrowserWindow): void {
-  tray = new Tray(createTrayImage('trayConnected.png'))
+function getTrayStatus(statuses: MountStatus[]): 'connected' | 'disconnected' | 'error' {
+  if (statuses.some(status => status.status === 'error')) return 'error'
+  if (statuses.length > 0 && statuses.every(status => status.status === 'mounted')) return 'connected'
+  return 'disconnected'
+}
 
-  updateTrayMenu(mainWindow)
+function getTrayIconFilename(status: 'connected' | 'disconnected' | 'error'): string {
+  return {
+    connected: 'trayConnected.png',
+    disconnected: 'trayDisconnected.png',
+    error: 'trayError.png'
+  }[status]
+}
+
+export function setupTray(mainWindow: BrowserWindow, statusSource: TrayStatusSource): void {
+  const initialStatus = getTrayStatus(statusSource.getAllStatuses())
+  tray = new Tray(createTrayImage(getTrayIconFilename(initialStatus)))
+  statusSource.onStatusesChanged(statuses => updateTrayIcon(getTrayStatus(statuses)))
+
+  updateTrayMenu(mainWindow, statusSource)
 
   tray.on('click', () => {
     mainWindow.show()
@@ -36,7 +59,7 @@ export function setupTray(mainWindow: BrowserWindow): void {
   })
 }
 
-export function updateTrayMenu(mainWindow: BrowserWindow): void {
+export function updateTrayMenu(mainWindow: BrowserWindow, statusSource: TrayStatusSource): void {
   if (!tray) return
 
   const contextMenu = Menu.buildFromTemplate([
@@ -49,7 +72,8 @@ export function updateTrayMenu(mainWindow: BrowserWindow): void {
     },
     {
       label: 'Refresh All Mounts',
-      click: () => {
+      click: async () => {
+        await statusSource.refreshAllStatuses()
         mainWindow.webContents.send('refresh-all-mounts')
       }
     },
@@ -68,12 +92,5 @@ export function updateTrayMenu(mainWindow: BrowserWindow): void {
 
 export function updateTrayIcon(status: 'connected' | 'disconnected' | 'error'): void {
   if (!tray) return
-
-  const iconMap = {
-    connected: 'trayConnected.png',
-    disconnected: 'trayDisconnected.png',
-    error: 'trayError.png'
-  }
-
-  tray.setImage(createTrayImage(iconMap[status]))
+  tray.setImage(createTrayImage(getTrayIconFilename(status)))
 }
