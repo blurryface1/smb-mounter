@@ -1,6 +1,6 @@
 {
   "name": "smb-mounter",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "macOS SMB mount manager",
   "author": "SMB Mounter Team",
   "license": "MIT",
